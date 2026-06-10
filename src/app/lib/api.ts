@@ -16,6 +16,7 @@
 
 import * as mock from "./mock-api";
 import { getSession } from "./auth";
+import { parseCsv } from "./csv";
 import type {
   ActiveCall,
   CompletedCall,
@@ -265,7 +266,11 @@ export async function setCampaignStatus(state: CampaignState): Promise<void> {
  * Returns: CampaignCustomer[]
  */
 export async function uploadCampaignCustomers(file: File): Promise<CampaignCustomer[]> {
-  if (USE_MOCK) return mock.uploadCampaignCsv(file);
+  if (USE_MOCK) {
+    const text = await file.text();
+    const rows = parseCsv(text);
+    return mock.importCampaignCsv(rows);
+  }
   const session = getSession();
   const form = new FormData();
   form.append("file", file);
