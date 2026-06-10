@@ -63,9 +63,18 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
  * POST /auth/login
  * Body:   { email, password }
  * Returns: { access_token, user: { email, name, role } }
+ *
+ * ⚠️  TEMPORARY BYPASS — mock mode uses auth.ts directly (no backend needed).
+ * To integrate real auth: set VITE_USE_MOCK=false and implement POST /auth/login
+ * on the backend returning { access_token, user: { email, name, role } }.
  */
 export async function loginUser(email: string, password: string) {
-  if (USE_MOCK) return mock.login(email, password, false);
+  if (USE_MOCK) {
+    // Bypass: create a local session without hitting any backend.
+    // auth.login() generates a mock JWT, stores it in sessionStorage, and returns
+    // the session object — AuthContext will pick it up immediately.
+    return getSession() ?? import("./auth").then(({ login }) => login(email, password, false));
+  }
   return apiFetch("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),

@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-  const login = useCallback(async (email: string, password: string, rememberMe: boolean) => {
+  const login = useCallback(async (email: string, password: string) => {
     // Delegates to api.ts → mock-api.ts in dev, real backend in prod
     await loginUser(email, password);
     // Re-read session from storage (mock sets it directly; real backend should return a JWT)
