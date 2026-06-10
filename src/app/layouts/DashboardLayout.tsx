@@ -11,6 +11,7 @@ import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
   { icon: Phone, label: "Live Calls", path: "/dashboard/live-calls" },
+  { icon: BarChart2, label: "Analytics", path: "/dashboard/analytics" },
 ];
 
 function NavItem({ icon: Icon, label, path, end, onNavigate }: {

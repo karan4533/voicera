@@ -6,6 +6,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LiveCallsPage } from "./pages/LiveCallsPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { useAuth } from "./context/AuthContext";
 
 /** Redirects already-authenticated users away from the login page. */
@@ -39,6 +40,7 @@ export default function App() {
             >
               <Route index element={<DashboardPage />} />
               <Route path="live-calls" element={<LiveCallsPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
