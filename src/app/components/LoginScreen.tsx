@@ -36,7 +36,7 @@ export function LoginScreen() {
       {/* Left Panel */}
       <div
         className="relative flex flex-col overflow-hidden"
-        style={{ width: "42%", minWidth: 420, backgroundColor: "#F5F0E8" }}
+        style={{ width: "42%", minWidth: 420, backgroundColor: "#1E1A14" }}
       >
         {/* Logo top-left */}
         <div className="flex items-center gap-2 px-8 pt-7">
@@ -55,7 +55,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 600,
               fontSize: 15,
-              color: "#1E1A14",
+              color: "#FFFFFF",
             }}
           >
             Heuristic Labs
@@ -69,7 +69,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 400,
               fontSize: 16,
-              color: "#4A453E",
+              color: "#D4CBBF",
               marginBottom: 4,
             }}
           >
@@ -94,7 +94,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 400,
               fontSize: 15,
-              color: "#4A453E",
+              color: "#D4CBBF",
               maxWidth: 210,
               lineHeight: 1.55,
               margin: 0,
