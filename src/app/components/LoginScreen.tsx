@@ -84,11 +84,10 @@ export function LoginScreen() {
               fontStyle: "italic",
               fontWeight: 700,
               fontSize: 76,
-              color: "#FFFFFF",
+              color: "#1E1A14",
               letterSpacing: "-0.03em",
               lineHeight: 1.05,
               margin: "0 0 16px",
-              textShadow: "0px 4px 24px rgba(0,0,0,0.12)",
             }}
           >
             Voicera
