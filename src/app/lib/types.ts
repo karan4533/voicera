@@ -2,25 +2,6 @@ export type AgentType = "restaurant" | "loan";
 
 export type CallStatus = "Active" | "Ringing" | "Hold" | "Completed";
 
-// ── Outbound Queue ─────────────────────────────────────────────────────────────
-
-export type QueueStatus = "pending" | "calling" | "completed" | "no-answer" | "skipped";
-
-export interface QueueContact {
-  id: string;
-  name: string;
-  phone: string;
-  location: string;
-  jobTitle: string;
-  company: string;
-  priority: "High" | "Normal" | "Low";
-  tags: string[];
-  attemptNumber: number;
-  totalAttempts: number;
-  agentType: AgentType;
-  queueStatus: QueueStatus;
-}
-
 // ── Call Reminders ─────────────────────────────────────────────────────────────
 
 export type ReminderDomain =
@@ -73,7 +54,7 @@ export interface TranscriptTurn {
 
 export interface LiveCallSession {
   contactId: string;
-  contact: QueueContact;
+  contact: ReminderContact;
   startedAt: number;
   status: "dialing" | "active" | "hold" | "ending";
   sentiment: number;       // 0–1 (e.g. 0.72 = 72% Positive)

@@ -4,10 +4,11 @@ import {
   Phone, PhoneOff, Mic, MicOff, Pause, Play, ArrowRightLeft,
   MapPin, Briefcase, Building2, Clock, Users
 } from "lucide-react";
-import { getQueueContacts, updateQueueStatus } from "../lib/api";
+import { getReminderContacts, updateReminderStatus } from "../lib/api";
 import { PAYMENT_SCRIPT } from "../lib/mock-api";
 import { formatDuration } from "../lib/csv";
-import type { QueueContact, LiveCallSession, TranscriptTurn } from "../lib/types";
+import type { ReminderContact, LiveCallSession, TranscriptTurn } from "../lib/types";
+import { useAgent } from "../context/AgentContext";
 
 // ── Priority helpers ──────────────────────────────────────────────────────────
 const PRIORITY_STYLES: Record<string, string> = {
@@ -55,13 +56,13 @@ function WaveformBars({ active }: { active: boolean }) {
 function QueueCard({
   contact, isSelected, isActive, onSelect, onStart,
 }: {
-  contact: QueueContact;
+  contact: ReminderContact;
   isSelected: boolean;
   isActive: boolean;
   onSelect: () => void;
   onStart: () => void;
 }) {
-  const canCall = contact.queueStatus === "pending" || contact.queueStatus === "no-answer";
+  const canCall = contact.status === "pending" || contact.status === "no-answer";
   return (
     <div
       onClick={onSelect}
@@ -87,8 +88,8 @@ function QueueCard({
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[contact.queueStatus]}`}>
-            {STATUS_LABELS[contact.queueStatus]}
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[contact.status]}`}>
+            {STATUS_LABELS[contact.status]}
           </span>
           <span className="text-[10px] text-[#9E9890]">{contact.attemptNumber}/{contact.totalAttempts} attempts</span>
           {isSelected && canCall && !isActive && (
@@ -110,9 +111,10 @@ function QueueCard({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function LiveCallsPage() {
   const navigate = useNavigate();
+  const { agent } = useAgent();
 
   // Queue state
-  const [queue, setQueue] = useState<QueueContact[]>([]);
+  const [queue, setQueue] = useState<ReminderContact[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Live call state
@@ -128,7 +130,7 @@ export function LiveCallsPage() {
 
   // Load queue
   const loadQueue = useCallback(() => {
-    getQueueContacts().then(setQueue);
+    getReminderContacts().then(setQueue);
   }, []);
 
   useEffect(() => {
@@ -189,10 +191,10 @@ export function LiveCallsPage() {
   }, []);
 
   // Handle Start Call
-  const handleStartCall = useCallback(async (contact: QueueContact) => {
+  const handleStartCall = useCallback(async (contact: ReminderContact) => {
     // Mark calling in queue
-    await updateQueueStatus(contact.id, "calling");
-    setQueue(prev => prev.map(c => c.id === contact.id ? { ...c, queueStatus: "calling" } : c));
+    await updateReminderStatus(contact.id, "calling");
+    setQueue(prev => prev.map(c => c.id === contact.id ? { ...c, status: "calling" } : c));
 
     const newSession: LiveCallSession = {
       contactId: contact.id,
@@ -224,9 +226,9 @@ export function LiveCallsPage() {
     if (transcriptTimerRef.current) clearInterval(transcriptTimerRef.current);
     if (dialTimerRef.current) clearTimeout(dialTimerRef.current);
 
-    // Mark completed
-    await updateQueueStatus(session.contactId, "completed");
-    setQueue(prev => prev.map(c => c.id === session.contactId ? { ...c, queueStatus: "completed" } : c));
+    // Update final status
+    await updateReminderStatus(session.contactId, "completed");
+    setQueue(prev => prev.map(c => c.id === session.contactId ? { ...c, status: "completed" } : c));
 
     setSession(null);
     setSelectedId(null);
@@ -249,8 +251,11 @@ export function LiveCallsPage() {
   }, []);
 
   // Derived stats
-  const pendingCount = queue.filter(c => c.queueStatus === "pending" || c.queueStatus === "no-answer").length;
-  const completedCount = queue.filter(c => c.queueStatus === "completed").length;
+  const pendingCount = queue.filter(c => c.status === "pending" || c.status === "no-answer").length;
+  const filteredQueue = queue.filter(c => c.domain === agent);
+  
+  const selectedContact = filteredQueue.find(c => c.id === selectedId);
+  const completedCount = queue.filter(c => c.status === "completed").length;
   const conversionRate = queue.length > 0 ? Math.round((completedCount / queue.length) * 100) : 0;
 
   // Auto-scroll transcript
@@ -270,7 +275,7 @@ export function LiveCallsPage() {
           <div className="text-[11px] font-bold text-[#7A746C] uppercase tracking-wider mb-2">Queue Overview</div>
           <div className="flex gap-4">
             <div className="text-center">
-              <div className="text-xl font-bold text-[#1E1A14]">{queue.length}</div>
+              <div className="text-xl font-bold text-[#1E1A14]">{filteredQueue.length}</div>
               <div className="text-[10px] text-[#9E9890]">Total</div>
             </div>
             <div className="text-center">
@@ -286,13 +291,13 @@ export function LiveCallsPage() {
 
         {/* Queue List */}
         <div className="flex-1 overflow-y-auto">
-          {queue.length === 0 ? (
+          {filteredQueue.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <Users size={28} className="text-[#D4CBBF] mb-2" />
               <p className="text-[12px] text-[#9E9890]">No contacts in queue</p>
             </div>
           ) : (
-            queue.map(contact => (
+            filteredQueue.map(contact => (
               <QueueCard
                 key={contact.id}
                 contact={contact}
@@ -374,12 +379,11 @@ export function LiveCallsPage() {
                       <span className="flex items-center gap-1">
                         <MapPin size={11} /> {session.contact.location}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Briefcase size={11} /> {session.contact.jobTitle}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Building2 size={11} /> {session.contact.company}
-                      </span>
+                      {Object.entries(session.contact.attributes).slice(0, 3).map(([key, val]) => (
+                        <span key={key} className="flex items-center gap-1">
+                          <Briefcase size={11} /> {String(val)}
+                        </span>
+                      ))}
                     </div>
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1.5">

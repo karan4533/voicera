@@ -7,7 +7,6 @@ import { DashboardLayout } from "./layouts/DashboardLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LiveCallsPage } from "./pages/LiveCallsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { CallQueuePage } from "./pages/CallQueuePage";
 import { CallRemindersPage } from "./pages/CallRemindersPage";
 import { useAuth } from "./context/AuthContext";
 
@@ -42,7 +41,6 @@ export default function App() {
             >
               <Route index element={<DashboardPage />} />
               <Route path="live-calls" element={<LiveCallsPage />} />
-              <Route path="call-queue" element={<CallQueuePage />} />
               <Route path="call-reminders" element={<CallRemindersPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
             </Route>

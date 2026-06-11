@@ -70,47 +70,6 @@ let reminderContacts: ReminderContact[] = [
 
 ];
 
-// ── Queue Contacts Mock Data ───────────────────────────────────────────────────
-
-let queueContacts: QueueContact[] = [
-  {
-    id: "q1", name: "Amit Sharma", phone: "+91 98765 43210",
-    location: "Mumbai, MH", jobTitle: "Business Owner", company: "Sharma Enterprises",
-    priority: "High", tags: ["Overdue 60+", "Repeat Contact", "High Value"],
-    attemptNumber: 2, totalAttempts: 3, agentType: "loan", queueStatus: "pending",
-  },
-  {
-    id: "q2", name: "Priya Nair", phone: "+91 91234 56789",
-    location: "Bangalore, KA", jobTitle: "Software Engineer", company: "TechCorp India",
-    priority: "Normal", tags: ["First Contact", "EMI Due"],
-    attemptNumber: 1, totalAttempts: 3, agentType: "loan", queueStatus: "pending",
-  },
-  {
-    id: "q3", name: "Ravi Gupta", phone: "+91 77665 44332",
-    location: "Delhi, DL", jobTitle: "Retailer", company: "Gupta General Store",
-    priority: "High", tags: ["Overdue 90+", "Escalation Risk"],
-    attemptNumber: 3, totalAttempts: 3, agentType: "loan", queueStatus: "pending",
-  },
-  {
-    id: "q4", name: "Sunita Patel", phone: "+91 87654 32109",
-    location: "Ahmedabad, GJ", jobTitle: "Homemaker", company: "N/A",
-    priority: "Normal", tags: ["Committed Last Call"],
-    attemptNumber: 2, totalAttempts: 3, agentType: "loan", queueStatus: "no-answer",
-  },
-  {
-    id: "q5", name: "Karthik Reddy", phone: "+91 90123 45678",
-    location: "Hyderabad, TS", jobTitle: "Fleet Manager", company: "Reddy Logistics",
-    priority: "Low", tags: ["New Account"],
-    attemptNumber: 1, totalAttempts: 2, agentType: "loan", queueStatus: "completed",
-  },
-  {
-    id: "q6", name: "Meena Krishnan", phone: "+91 88990 11223",
-    location: "Chennai, TN", jobTitle: "Teacher", company: "St. Mary's School",
-    priority: "Normal", tags: ["First Contact", "Low DPD"],
-    attemptNumber: 1, totalAttempts: 3, agentType: "loan", queueStatus: "pending",
-  },
-];
-
 // ── Conversation Scripts ───────────────────────────────────────────────────────
 
 export const PAYMENT_SCRIPT: Omit<TranscriptTurn, "id" | "timestamp">[] = [
@@ -218,18 +177,7 @@ function randomLatency() {
   return 380 + Math.floor(Math.random() * 120);
 }
 
-// ── Queue Functions ────────────────────────────────────────────────────────────
-
-export async function fetchQueueContacts(): Promise<QueueContact[]> {
-  await delay(150);
-  return [...queueContacts];
-}
-
-export async function updateQueueContactStatus(id: string, status: QueueContact["queueStatus"]): Promise<void> {
-  await delay(100);
-  const c = queueContacts.find((q) => q.id === id);
-  if (c) c.queueStatus = status;
-}
+// ── System Functions ────────────────────────────────────────────────────────────
 
 export async function fetchSystemHealth(): Promise<SystemHealth> {
   await delay(100);
