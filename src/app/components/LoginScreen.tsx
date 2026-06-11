@@ -65,30 +65,32 @@ export function LoginScreen() {
 
         {/* Center content */}
         <div className="flex flex-1 flex-col justify-center px-12 pb-20 relative z-10">
-          <p
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 600,
-              fontSize: 15,
-              color: "rgba(30, 26, 20, 0.85)",
-              textTransform: "uppercase",
-              letterSpacing: "0.15em",
-              marginBottom: 8,
-            }}
-          >
-            Welcome to
-          </p>
+          <div className="mb-2 flex items-center gap-3">
+            <div className="h-[2px] w-8 bg-[#1E1A14] opacity-20 rounded-full" />
+            <p
+              style={{
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                color: "rgba(30, 26, 20, 0.65)",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                margin: 0,
+              }}
+            >
+              Welcome to
+            </p>
+          </div>
           <h1
             style={{
-              fontFamily: "Georgia, 'Times New Roman', serif",
-              fontStyle: "italic",
-              fontWeight: 700,
-              fontSize: 76,
+              fontFamily: "Inter, sans-serif",
+              fontWeight: 900,
+              fontSize: 88,
               color: "#FFFFFF",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.04em",
               lineHeight: 1.05,
               margin: "0 0 16px",
-              textShadow: "0px 4px 24px rgba(0,0,0,0.12)",
+              textShadow: "0px 8px 32px rgba(0,0,0,0.08)",
             }}
           >
             Voicera
@@ -97,10 +99,10 @@ export function LoginScreen() {
             style={{
               fontFamily: "Inter, sans-serif",
               fontWeight: 500,
-              fontSize: 18,
-              color: "rgba(30, 26, 20, 0.95)",
-              maxWidth: 260,
-              lineHeight: 1.5,
+              fontSize: 19,
+              color: "rgba(30, 26, 20, 0.75)",
+              maxWidth: 320,
+              lineHeight: 1.45,
               margin: 0,
             }}
           >
