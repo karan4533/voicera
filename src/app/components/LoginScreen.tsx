@@ -39,13 +39,13 @@ export function LoginScreen() {
         style={{ width: "42%", minWidth: 420, backgroundColor: "#B8946A" }}
       >
         {/* Logo top-left */}
-        <div className="flex items-center gap-2 px-8 pt-7">
+        <div className="flex items-center gap-3 px-8 pt-8">
           <img
             src={heuristicLabsLogo}
             alt="Heuristic Labs"
             style={{
-              width: 30,
-              height: 30,
+              width: 44,
+              height: 44,
               objectFit: "contain",
               flexShrink: 0,
             }}
@@ -53,9 +53,10 @@ export function LoginScreen() {
           <span
             style={{
               fontFamily: "Inter, sans-serif",
-              fontWeight: 600,
-              fontSize: 15,
-              color: "#1E1A14",
+              fontWeight: 700,
+              fontSize: 18,
+              color: "#FFFFFF",
+              letterSpacing: "-0.02em",
             }}
           >
             Heuristic Labs
@@ -63,14 +64,16 @@ export function LoginScreen() {
         </div>
 
         {/* Center content */}
-        <div className="flex flex-1 flex-col justify-center px-12 pb-20">
+        <div className="flex flex-1 flex-col justify-center px-12 pb-20 relative z-10">
           <p
             style={{
               fontFamily: "Inter, sans-serif",
-              fontWeight: 500,
-              fontSize: 16,
-              color: "#1E1A14",
-              marginBottom: 4,
+              fontWeight: 600,
+              fontSize: 15,
+              color: "rgba(255, 255, 255, 0.85)",
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              marginBottom: 8,
             }}
           >
             Welcome to
@@ -80,11 +83,12 @@ export function LoginScreen() {
               fontFamily: "Georgia, 'Times New Roman', serif",
               fontStyle: "italic",
               fontWeight: 700,
-              fontSize: 58,
-              color: "#1E1A14",
-              letterSpacing: "-1px",
+              fontSize: 76,
+              color: "#FFFFFF",
+              letterSpacing: "-0.03em",
               lineHeight: 1.05,
-              margin: "0 0 12px",
+              margin: "0 0 16px",
+              textShadow: "0px 4px 24px rgba(0,0,0,0.12)",
             }}
           >
             Voicera
@@ -93,10 +97,10 @@ export function LoginScreen() {
             style={{
               fontFamily: "Inter, sans-serif",
               fontWeight: 500,
-              fontSize: 15,
-              color: "#1E1A14",
-              maxWidth: 210,
-              lineHeight: 1.55,
+              fontSize: 18,
+              color: "rgba(255, 255, 255, 0.95)",
+              maxWidth: 260,
+              lineHeight: 1.5,
               margin: 0,
             }}
           >
