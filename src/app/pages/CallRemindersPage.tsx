@@ -13,25 +13,18 @@ import {
 } from "../lib/api";
 import { parseCsv } from "../lib/csv";
 import type { ReminderContact, ReminderDomain, ReminderStatus } from "../lib/types";
+import { useAgent } from "../context/AgentContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DOMAIN_LABELS: Record<ReminderDomain, string> = {
   restaurant: "Restaurant",
   loan: "Loan Services",
-  healthcare: "Healthcare",
-  banking: "Banking",
-  insurance: "Insurance",
-  other: "Other",
 };
 
 const DOMAIN_COLORS: Record<ReminderDomain, string> = {
   restaurant: "bg-orange-50 text-orange-700 border-orange-200",
   loan: "bg-blue-50 text-blue-700 border-blue-200",
-  healthcare: "bg-green-50 text-green-700 border-green-200",
-  banking: "bg-purple-50 text-purple-700 border-purple-200",
-  insurance: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  other: "bg-gray-50 text-gray-600 border-gray-200",
 };
 
 const DOMAIN_FIELDS: Record<ReminderDomain, { key: string; label: string; type: "text" | "number" | "date" }[]> = {
@@ -48,22 +41,6 @@ const DOMAIN_FIELDS: Record<ReminderDomain, { key: string; label: string; type: 
     { key: "followUpDate", label: "Follow-up Date", type: "date" },
     { key: "leadSource", label: "Lead Source", type: "text" },
   ],
-  healthcare: [
-    { key: "appointmentDate", label: "Appointment Date", type: "date" },
-    { key: "doctorName", label: "Doctor Name", type: "text" },
-    { key: "department", label: "Department", type: "text" },
-  ],
-  banking: [
-    { key: "accountType", label: "Account Type", type: "text" },
-    { key: "branch", label: "Branch", type: "text" },
-    { key: "lastTransactionDate", label: "Last Transaction Date", type: "date" },
-  ],
-  insurance: [
-    { key: "policyType", label: "Policy Type", type: "text" },
-    { key: "policyNumber", label: "Policy Number", type: "text" },
-    { key: "renewalDate", label: "Renewal Date", type: "date" },
-  ],
-  other: [],
 };
 
 const STATUS_STYLES: Record<ReminderStatus, string> = {
@@ -131,12 +108,12 @@ const EMPTY_FORM: AddFormData = {
 // ── Main Component ────────────────────────────────────────────────────────────
 export function CallRemindersPage() {
   const navigate = useNavigate();
+  const { agent, agentLabel } = useAgent();
   const [contacts, setContacts] = useState<ReminderContact[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [search, setSearch] = useState("");
-  const [domainFilter, setDomainFilter] = useState<ReminderDomain | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ReminderStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<"High" | "Normal" | "Low" | "all">("all");
 
@@ -151,7 +128,6 @@ export function CallRemindersPage() {
 
   // Import state
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importDomain, setImportDomain] = useState<ReminderDomain>("loan");
   const [importPreview, setImportPreview] = useState<Record<string, string>[]>([]);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -165,7 +141,7 @@ export function CallRemindersPage() {
   const filtered = contacts.filter((c) => {
     const q = search.toLowerCase();
     const matchSearch = !q || c.name.toLowerCase().includes(q) || c.phone.includes(q);
-    const matchDomain = domainFilter === "all" || c.domain === domainFilter;
+    const matchDomain = c.domain === agent;
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
     const matchPriority = priorityFilter === "all" || c.priority === priorityFilter;
     return matchSearch && matchDomain && matchStatus && matchPriority;
@@ -192,7 +168,7 @@ export function CallRemindersPage() {
         name: form.name, phone: form.phone, location: form.location,
         priority: form.priority,
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        notes: form.notes, domain: form.domain,
+        notes: form.notes, domain: agent as ReminderDomain,
         status: "pending",
         scheduledAt: form.scheduledAt || null,
         attributes: Object.fromEntries(
@@ -218,7 +194,7 @@ export function CallRemindersPage() {
     if (!importFile) return;
     setImporting(true);
     try {
-      const imported = await bulkImportReminders(importFile, importDomain);
+      const imported = await bulkImportReminders(importFile, agent as ReminderDomain);
       setContacts((prev) => [...imported, ...prev]);
       setImportOpen(false);
       setImportFile(null);
@@ -242,8 +218,8 @@ export function CallRemindersPage() {
         <div className="shrink-0 mb-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h1 className="text-xl font-bold text-[#1E1A14] tracking-tight">Call Reminders</h1>
-              <p className="text-[13px] text-[#7A746C] mt-0.5">Manage outbound reminder calls across all domains</p>
+              <h1 className="text-xl font-bold text-[#1E1A14] tracking-tight">{agentLabel} Reminders</h1>
+              <p className="text-[13px] text-[#7A746C] mt-0.5">Manage outbound reminder calls for {agentLabel.toLowerCase()}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -289,20 +265,6 @@ export function CallRemindersPage() {
               className="w-full pl-8 pr-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
             />
           </div>
-          {/* Domain filter */}
-          <div className="relative">
-            <select
-              value={domainFilter}
-              onChange={(e) => setDomainFilter(e.target.value as ReminderDomain | "all")}
-              className="appearance-none pl-3 pr-7 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white cursor-pointer focus:outline-none"
-            >
-              <option value="all">All Domains</option>
-              {(Object.keys(DOMAIN_LABELS) as ReminderDomain[]).map((d) => (
-                <option key={d} value={d}>{DOMAIN_LABELS[d]}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
-          </div>
           {/* Status filter */}
           <div className="relative">
             <select
@@ -341,7 +303,7 @@ export function CallRemindersPage() {
             <table className="w-full border-collapse text-[13px]">
               <thead className="sticky top-0 bg-[#FDFDFD] z-10">
                 <tr className="border-b border-[#E2DDD5]">
-                  {["Contact", "Phone", "Domain", "Priority", "Status", "Scheduled", "Tags", "Actions"].map((h) => (
+                  {["Contact", "Phone", "Priority", "Status", "Scheduled", "Tags", "Actions"].map((h) => (
                     <th key={h} className="text-left text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
                       {h}
                     </th>
@@ -369,12 +331,6 @@ export function CallRemindersPage() {
                       </td>
                       {/* Phone */}
                       <td className="px-4 py-3 font-mono text-[12px] text-[#4A453E] whitespace-nowrap">{c.phone}</td>
-                      {/* Domain */}
-                      <td className="px-4 py-3">
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${DOMAIN_COLORS[c.domain]}`}>
-                          {DOMAIN_LABELS[c.domain]}
-                        </span>
-                      </td>
                       {/* Priority */}
                       <td className="px-4 py-3">
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${PRIORITY_STYLES[c.priority]}`}>
@@ -632,26 +588,6 @@ export function CallRemindersPage() {
 
             {/* Drawer form */}
             <form onSubmit={handleAddSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
-              {/* Domain selector — first, because it drives dynamic fields */}
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A453E] mb-1.5">Business Domain *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(DOMAIN_LABELS) as ReminderDomain[]).map((d) => (
-                    <button
-                      key={d} type="button"
-                      onClick={() => { setField("domain", d); setForm((f) => ({ ...f, domain: d, attributes: {} })); }}
-                      className={`text-[12px] font-medium py-2 px-3 rounded-lg border cursor-pointer transition-all ${
-                        form.domain === d
-                          ? "border-[#B8946A] bg-[#FDF3E3] text-[#B8946A] font-semibold"
-                          : "border-[#E2DDD5] bg-white text-[#7A746C] hover:bg-[#F9F9F7]"
-                      }`}
-                    >
-                      {DOMAIN_LABELS[d]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Common fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -712,13 +648,13 @@ export function CallRemindersPage() {
               </div>
 
               {/* Dynamic domain-specific fields */}
-              {DOMAIN_FIELDS[form.domain].length > 0 && (
+              {DOMAIN_FIELDS[agent as ReminderDomain].length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
-                    {DOMAIN_LABELS[form.domain]} Details
+                    {DOMAIN_LABELS[agent as ReminderDomain]} Details
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {DOMAIN_FIELDS[form.domain].map((f) => (
+                    {DOMAIN_FIELDS[agent as ReminderDomain].map((f) => (
                       <div key={f.key}>
                         <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">{f.label}</label>
                         <input
@@ -774,26 +710,6 @@ export function CallRemindersPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-              {/* Domain selection */}
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A453E] mb-1.5">Business Domain *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(DOMAIN_LABELS) as ReminderDomain[]).map((d) => (
-                    <button
-                      key={d} type="button"
-                      onClick={() => setImportDomain(d)}
-                      className={`text-[12px] font-medium py-2 px-3 rounded-lg border cursor-pointer transition-all ${
-                        importDomain === d
-                          ? "border-[#B8946A] bg-[#FDF3E3] text-[#B8946A] font-semibold"
-                          : "border-[#E2DDD5] bg-white text-[#7A746C] hover:bg-[#F9F9F7]"
-                      }`}
-                    >
-                      {DOMAIN_LABELS[d]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Upload zone */}
               <div
                 className="border-2 border-dashed border-[#E2DDD5] rounded-xl p-8 text-center cursor-pointer hover:border-[#B8946A] hover:bg-[#FDF8F3] transition-all"

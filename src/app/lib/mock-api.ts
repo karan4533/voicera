@@ -44,40 +44,7 @@ let reminderContacts: ReminderContact[] = [
     callHistory: [],
     attemptNumber: 1, totalAttempts: 2,
   },
-  {
-    id: "r3", name: "Dr. Ravi Kumar", phone: "+91 77665 44332",
-    location: "Delhi, DL", priority: "High",
-    tags: ["Appointment", "Follow-up"], notes: "Post-surgery follow-up appointment reminder.",
-    domain: "healthcare", status: "rescheduled",
-    scheduledAt: "2026-06-13T09:00:00Z",
-    attributes: { appointmentDate: "2026-06-14", doctorName: "Dr. S. Mehta", department: "Orthopedics" },
-    callHistory: [
-      { id: "ch2", calledAt: "2026-06-10 09:00", duration: "01:45", outcome: "Rescheduled", summary: "Patient requested to reschedule to June 14th." },
-    ],
-    attemptNumber: 2, totalAttempts: 3,
-  },
-  {
-    id: "r4", name: "Sunita Patel", phone: "+91 87654 32109",
-    location: "Ahmedabad, GJ", priority: "Normal",
-    tags: ["Account Review"], notes: "Annual account review call.",
-    domain: "banking", status: "pending",
-    scheduledAt: "2026-06-12T11:00:00Z",
-    attributes: { accountType: "Savings", branch: "Navrangpura Branch", lastTransactionDate: "2026-06-05" },
-    callHistory: [],
-    attemptNumber: 1, totalAttempts: 2,
-  },
-  {
-    id: "r5", name: "Karthik Reddy", phone: "+91 90123 45678",
-    location: "Hyderabad, TS", priority: "Low",
-    tags: ["Renewal", "Insurance"], notes: "Policy renewal due next month.",
-    domain: "insurance", status: "completed",
-    scheduledAt: null,
-    attributes: { policyType: "Health Insurance", policyNumber: "HI-2024-98765", renewalDate: "2026-07-01" },
-    callHistory: [
-      { id: "ch3", calledAt: "2026-06-09 14:00", duration: "04:30", outcome: "Completed", summary: "Customer confirmed renewal. Premium paid online. Documents emailed." },
-    ],
-    attemptNumber: 1, totalAttempts: 1,
-  },
+
   {
     id: "r6", name: "Meena Krishnan", phone: "+91 88990 11223",
     location: "Chennai, TN", priority: "Normal",
@@ -100,16 +67,7 @@ let reminderContacts: ReminderContact[] = [
     callHistory: [],
     attemptNumber: 1, totalAttempts: 1,
   },
-  {
-    id: "r8", name: "Anjali Singh", phone: "+91 70012 34567",
-    location: "Kolkata, WB", priority: "High",
-    tags: ["Critical", "ICU Follow-up"], notes: "Post-discharge follow-up from cardiac ward.",
-    domain: "healthcare", status: "pending",
-    scheduledAt: "2026-06-12T08:00:00Z",
-    attributes: { appointmentDate: "2026-06-18", doctorName: "Dr. A. Banerjee", department: "Cardiology" },
-    callHistory: [],
-    attemptNumber: 1, totalAttempts: 2,
-  },
+
 ];
 
 // ── Queue Contacts Mock Data ───────────────────────────────────────────────────

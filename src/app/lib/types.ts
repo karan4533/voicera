@@ -25,11 +25,7 @@ export interface QueueContact {
 
 export type ReminderDomain =
   | "restaurant"
-  | "loan"
-  | "healthcare"
-  | "banking"
-  | "insurance"
-  | "other";
+  | "loan";
 
 export type ReminderStatus =
   | "pending"
