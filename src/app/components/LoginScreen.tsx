@@ -55,7 +55,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 700,
               fontSize: 18,
-              color: "#FFFFFF",
+              color: "#1E1A14",
               letterSpacing: "-0.02em",
             }}
           >
@@ -70,7 +70,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 600,
               fontSize: 15,
-              color: "rgba(255, 255, 255, 0.85)",
+              color: "rgba(30, 26, 20, 0.85)",
               textTransform: "uppercase",
               letterSpacing: "0.15em",
               marginBottom: 8,
@@ -84,10 +84,11 @@ export function LoginScreen() {
               fontStyle: "italic",
               fontWeight: 700,
               fontSize: 76,
-              color: "#1E1A14",
+              color: "#FFFFFF",
               letterSpacing: "-0.03em",
               lineHeight: 1.05,
               margin: "0 0 16px",
+              textShadow: "0px 4px 24px rgba(0,0,0,0.12)",
             }}
           >
             Voicera
@@ -97,7 +98,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 500,
               fontSize: 18,
-              color: "rgba(255, 255, 255, 0.95)",
+              color: "rgba(30, 26, 20, 0.95)",
               maxWidth: 260,
               lineHeight: 1.5,
               margin: 0,
