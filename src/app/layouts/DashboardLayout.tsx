@@ -10,8 +10,8 @@ import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
-  { icon: Phone, label: "Live Calls", path: "/dashboard/live-calls" },
   { icon: BellRing, label: "Call Reminders", path: "/dashboard/call-reminders" },
+  { icon: Phone, label: "Live Calls", path: "/dashboard/live-calls" },
   { icon: BarChart2, label: "Analytics", path: "/dashboard/analytics" },
 ];
 
