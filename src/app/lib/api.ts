@@ -36,7 +36,7 @@ import type {
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) ?? "http://localhost:8000";
 
 /**
