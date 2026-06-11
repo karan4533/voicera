@@ -1,30 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Phone, Search, Filter } from "lucide-react";
+import { Phone, Search } from "lucide-react";
 import { getQueueContacts, updateQueueStatus } from "../lib/api";
 import { PageHeader } from "../components/shared/PageHeader";
 import type { QueueContact } from "../lib/types";
 
 const PRIORITY_STYLES: Record<string, string> = {
-  High:   "bg-red-100 text-red-700 border-red-200",
+  High: "bg-red-100 text-red-700 border-red-200",
   Normal: "bg-blue-100 text-blue-700 border-blue-200",
-  Low:    "bg-gray-100 text-gray-600 border-gray-200",
+  Low: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  pending:     "bg-amber-50 text-amber-700 border-amber-200",
-  calling:     "bg-green-50 text-green-700 border-green-200",
-  completed:   "bg-gray-100 text-gray-500 border-gray-200",
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  calling: "bg-green-50 text-green-700 border-green-200",
+  completed: "bg-gray-100 text-gray-500 border-gray-200",
   "no-answer": "bg-orange-50 text-orange-600 border-orange-200",
-  skipped:     "bg-gray-50 text-gray-400 border-gray-200",
+  skipped: "bg-gray-50 text-gray-400 border-gray-200",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending:     "Pending",
-  calling:     "In Call",
-  completed:   "Completed",
+  pending: "Pending",
+  calling: "In Call",
+  completed: "Completed",
   "no-answer": "No Answer",
-  skipped:     "Skipped",
+  skipped: "Skipped",
 };
 
 export function CallQueuePage() {
@@ -38,7 +38,7 @@ export function CallQueuePage() {
     getQueueContacts().then(setContacts);
   }, []);
 
-  const handleCallNow = async () => {
+  const handleCallNow = async (contact: QueueContact) => {
     // Navigate to live calls page — the user will click Start Call there
     navigate("/dashboard/live-calls");
   };
@@ -166,7 +166,7 @@ export function CallQueuePage() {
                       {(c.queueStatus === "pending" || c.queueStatus === "no-answer") && (
                         <>
                           <button
-                            onClick={() => handleCallNow()}
+                            onClick={() => handleCallNow(c)}
                             className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
                           >
                             <Phone size={11} /> Call Now
