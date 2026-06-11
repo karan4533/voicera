@@ -32,10 +32,10 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="flex min-h-screen w-full flex-col lg:flex-row lg:overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Left Panel */}
       <div
-        className="relative flex flex-col overflow-hidden"
+        className="relative hidden lg:flex flex-col overflow-hidden shrink-0"
         style={{ width: "42%", minWidth: 420, backgroundColor: "#B8946A" }}
       >
         {/* Logo top-left */}
@@ -148,8 +148,20 @@ export function LoginScreen() {
       </div>
 
       {/* Right Panel */}
-      <div className="flex flex-1 items-center justify-center bg-white">
-        <div style={{ width: "100%", maxWidth: 380, padding: "0 32px" }}>
+      <div className="flex flex-1 flex-col items-center justify-center bg-white px-4 py-12 lg:px-0 lg:py-0">
+        {/* Mobile Branding (hidden on desktop) */}
+        <div className="mb-8 flex flex-col items-center gap-2 lg:hidden">
+          <img
+            src={heuristicLabsLogo}
+            alt="Heuristic Labs"
+            className="h-10 w-10 object-contain"
+          />
+          <h1 className="font-['Inter',sans-serif] text-4xl font-black tracking-[-0.04em] text-[#1E1A14]">
+            Voicera
+          </h1>
+        </div>
+
+        <div className="w-full max-w-[380px] px-4 sm:px-8 lg:px-8">
           <h2
             style={{
               fontFamily: "Georgia, 'Times New Roman', serif",
