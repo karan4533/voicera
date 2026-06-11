@@ -38,7 +38,7 @@ export function CallQueuePage() {
     getQueueContacts().then(setContacts);
   }, []);
 
-  const handleCallNow = async (contact: QueueContact) => {
+  const handleCallNow = async () => {
     // Navigate to live calls page — the user will click Start Call there
     navigate("/dashboard/live-calls");
   };
@@ -166,7 +166,7 @@ export function CallQueuePage() {
                       {(c.queueStatus === "pending" || c.queueStatus === "no-answer") && (
                         <>
                           <button
-                            onClick={() => handleCallNow(c)}
+                            onClick={() => handleCallNow()}
                             className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
                           >
                             <Phone size={11} /> Call Now

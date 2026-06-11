@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
   Phone, PhoneOff, Mic, MicOff, Pause, Play, ArrowRightLeft,
-  MapPin, Briefcase, Building2, ChevronRight, Clock, Users, TrendingUp
+  MapPin, Briefcase, Building2, Clock, Users
 } from "lucide-react";
 import { getQueueContacts, updateQueueStatus } from "../lib/api";
 import { PAYMENT_SCRIPT } from "../lib/mock-api";
@@ -119,7 +119,7 @@ export function LiveCallsPage() {
   const [session, setSession] = useState<LiveCallSession | null>(null);
 
   // Timer tick
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
   // Transcript script index
   const scriptIdxRef = useRef(0);
