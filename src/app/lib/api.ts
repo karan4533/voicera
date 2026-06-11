@@ -31,6 +31,7 @@ import type {
   DashboardMetrics,
   ClientDomain,
   ExtractedEntity,
+  QueueContact,
 } from "./types";
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -138,6 +139,29 @@ export async function getCompletedCalls(): Promise<CompletedCall[]> {
 export async function endActiveCall(id: string): Promise<void> {
   if (USE_MOCK) return mock.endCall(id);
   return apiFetch<void>(`/calls/${id}/end`, { method: "POST" });
+}
+
+// ── Queue ─────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /queue/contacts
+ * Returns: QueueContact[]
+ */
+export async function getQueueContacts(): Promise<QueueContact[]> {
+  if (USE_MOCK) return mock.fetchQueueContacts();
+  return apiFetch<QueueContact[]>("/queue/contacts");
+}
+
+/**
+ * PATCH /queue/contacts/:id/status
+ * Body: { status }
+ */
+export async function updateQueueStatus(id: string, status: QueueContact["queueStatus"]): Promise<void> {
+  if (USE_MOCK) return mock.updateQueueContactStatus(id, status);
+  return apiFetch<void>(`/queue/contacts/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

@@ -2,6 +2,49 @@ export type AgentType = "restaurant" | "loan";
 
 export type CallStatus = "Active" | "Ringing" | "Hold" | "Completed";
 
+// ── Outbound Queue ─────────────────────────────────────────────────────────────
+
+export type QueueStatus = "pending" | "calling" | "completed" | "no-answer" | "skipped";
+
+export interface QueueContact {
+  id: string;
+  name: string;
+  phone: string;
+  location: string;
+  jobTitle: string;
+  company: string;
+  priority: "High" | "Normal" | "Low";
+  tags: string[];
+  attemptNumber: number;
+  totalAttempts: number;
+  agentType: AgentType;
+  queueStatus: QueueStatus;
+}
+
+// ── Live Call Session ──────────────────────────────────────────────────────────
+
+export interface TranscriptTurn {
+  id: string;
+  speaker: "AI" | "Customer";
+  text: string;
+  timestamp: string;
+}
+
+export interface LiveCallSession {
+  contactId: string;
+  contact: QueueContact;
+  startedAt: number;
+  status: "dialing" | "active" | "hold" | "ending";
+  sentiment: number;       // 0–1 (e.g. 0.72 = 72% Positive)
+  engagement: number;      // 0–1 (e.g. 0.85 = 85%)
+  nluConfidence: number;   // 0–1
+  aiSpeaking: boolean;
+  isMuted: boolean;
+  isOnHold: boolean;
+  autoSummarize: boolean;
+  transcript: TranscriptTurn[];
+}
+
 export interface ActiveCall {
   id: string;
   callerId: string;

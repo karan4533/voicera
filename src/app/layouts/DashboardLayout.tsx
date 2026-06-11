@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router";
 import {
-  LayoutDashboard, Phone, BarChart2, BookOpen, Send, Settings, HelpCircle, ChevronDown, Bell, Menu, X, LogOut,
+  LayoutDashboard, Phone, BarChart2, BookOpen, Send, Settings, HelpCircle, ChevronDown, Bell, Menu, X, LogOut, Users2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useAgent, AGENTS } from "../context/AgentContext";
@@ -11,6 +11,7 @@ import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 const navItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
   { icon: Phone, label: "Live Calls", path: "/dashboard/live-calls" },
+  { icon: Users2, label: "Call Queue", path: "/dashboard/call-queue" },
   { icon: BarChart2, label: "Analytics", path: "/dashboard/analytics" },
 ];
 
