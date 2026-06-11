@@ -36,7 +36,7 @@ export function LoginScreen() {
       {/* Left Panel */}
       <div
         className="relative flex flex-col overflow-hidden"
-        style={{ width: "42%", minWidth: 420, backgroundColor: "#1E1A14" }}
+        style={{ width: "42%", minWidth: 420, backgroundColor: "#B8946A" }}
       >
         {/* Logo top-left */}
         <div className="flex items-center gap-2 px-8 pt-7">
@@ -55,7 +55,7 @@ export function LoginScreen() {
               fontFamily: "Inter, sans-serif",
               fontWeight: 600,
               fontSize: 15,
-              color: "#FFFFFF",
+              color: "#1E1A14",
             }}
           >
             Heuristic Labs
@@ -67,9 +67,9 @@ export function LoginScreen() {
           <p
             style={{
               fontFamily: "Inter, sans-serif",
-              fontWeight: 400,
+              fontWeight: 500,
               fontSize: 16,
-              color: "#D4CBBF",
+              color: "#1E1A14",
               marginBottom: 4,
             }}
           >
@@ -81,7 +81,7 @@ export function LoginScreen() {
               fontStyle: "italic",
               fontWeight: 700,
               fontSize: 58,
-              color: "#C8872A",
+              color: "#1E1A14",
               letterSpacing: "-1px",
               lineHeight: 1.05,
               margin: "0 0 12px",
@@ -92,9 +92,9 @@ export function LoginScreen() {
           <p
             style={{
               fontFamily: "Inter, sans-serif",
-              fontWeight: 400,
+              fontWeight: 500,
               fontSize: 15,
-              color: "#D4CBBF",
+              color: "#1E1A14",
               maxWidth: 210,
               lineHeight: 1.55,
               margin: 0,
@@ -113,30 +113,30 @@ export function LoginScreen() {
             xmlns="http://www.w3.org/2000/svg"
             style={{ width: "100%", height: "100%", display: "block" }}
           >
-            <circle cx="68"  cy="74"  r="1.4" fill="#C8BCA3" fillOpacity="0.07" />
-            <circle cx="448" cy="58"  r="1.0" fill="#C8BCA3" fillOpacity="0.05" />
-            <circle cx="522" cy="148" r="1.6" fill="#C8BCA3" fillOpacity="0.06" />
-            <circle cx="182" cy="218" r="1.1" fill="#C8BCA3" fillOpacity="0.07" />
-            <circle cx="376" cy="305" r="1.2" fill="#C8BCA3" fillOpacity="0.05" />
-            <circle cx="58"  cy="428" r="1.3" fill="#C8BCA3" fillOpacity="0.06" />
-            <circle cx="487" cy="386" r="1.0" fill="#C8BCA3" fillOpacity="0.05" />
-            <circle cx="268" cy="516" r="1.5" fill="#C8BCA3" fillOpacity="0.06" />
-            <circle cx="138" cy="604" r="1.0" fill="#C8BCA3" fillOpacity="0.07" />
-            <circle cx="558" cy="572" r="1.2" fill="#C8BCA3" fillOpacity="0.05" />
-            <circle cx="334" cy="648" r="0.9" fill="#C8BCA3" fillOpacity="0.06" />
+            <circle cx="68"  cy="74"  r="1.4" fill="#FFFFFF" fillOpacity="0.15" />
+            <circle cx="448" cy="58"  r="1.0" fill="#FFFFFF" fillOpacity="0.10" />
+            <circle cx="522" cy="148" r="1.6" fill="#FFFFFF" fillOpacity="0.12" />
+            <circle cx="182" cy="218" r="1.1" fill="#FFFFFF" fillOpacity="0.15" />
+            <circle cx="376" cy="305" r="1.2" fill="#FFFFFF" fillOpacity="0.10" />
+            <circle cx="58"  cy="428" r="1.3" fill="#FFFFFF" fillOpacity="0.12" />
+            <circle cx="487" cy="386" r="1.0" fill="#FFFFFF" fillOpacity="0.10" />
+            <circle cx="268" cy="516" r="1.5" fill="#FFFFFF" fillOpacity="0.12" />
+            <circle cx="138" cy="604" r="1.0" fill="#FFFFFF" fillOpacity="0.15" />
+            <circle cx="558" cy="572" r="1.2" fill="#FFFFFF" fillOpacity="0.10" />
+            <circle cx="334" cy="648" r="0.9" fill="#FFFFFF" fillOpacity="0.12" />
 
-            <path d="M-20 786 C 110 756, 225 660, 308 672 C 396 685, 506 758, 640 788" stroke="#C8BCA3" strokeWidth="0.7" strokeOpacity="0.04" fill="none" strokeLinecap="round" />
-            <path d="M-20 793 C 110 763, 225 667, 308 679 C 396 692, 506 765, 640 795" stroke="#C8BCA3" strokeWidth="0.8" strokeOpacity="0.05" fill="none" strokeLinecap="round" />
-            <path d="M-20 800 C 110 770, 225 674, 308 686 C 396 699, 506 772, 640 802" stroke="#C8BCA3" strokeWidth="0.9" strokeOpacity="0.06" fill="none" strokeLinecap="round" />
-            <path d="M-20 807 C 110 777, 225 681, 308 693 C 396 706, 506 779, 640 809" stroke="#C8BCA3" strokeWidth="1.0" strokeOpacity="0.07" fill="none" strokeLinecap="round" />
-            <path d="M-20 813 C 110 783, 225 687, 308 699 C 396 712, 506 785, 640 815" stroke="#C8BCA3" strokeWidth="1.0" strokeOpacity="0.07" fill="none" strokeLinecap="round" />
-            <path d="M-20 819 C 110 789, 225 693, 308 705 C 396 718, 506 791, 640 821" stroke="#C8BCA3" strokeWidth="1.1" strokeOpacity="0.08" fill="none" strokeLinecap="round" />
-            <path d="M-20 825 C 110 795, 225 699, 308 711 C 396 724, 506 797, 640 827" stroke="#C8BCA3" strokeWidth="1.1" strokeOpacity="0.08" fill="none" strokeLinecap="round" />
-            <path d="M-20 831 C 110 801, 225 705, 308 717 C 396 730, 506 803, 640 833" stroke="#C8BCA3" strokeWidth="1.0" strokeOpacity="0.07" fill="none" strokeLinecap="round" />
-            <path d="M-20 838 C 110 808, 225 712, 308 724 C 396 737, 506 810, 640 840" stroke="#C8BCA3" strokeWidth="1.0" strokeOpacity="0.07" fill="none" strokeLinecap="round" />
-            <path d="M-20 845 C 110 815, 225 719, 308 731 C 396 744, 506 817, 640 847" stroke="#C8BCA3" strokeWidth="0.9" strokeOpacity="0.06" fill="none" strokeLinecap="round" />
-            <path d="M-20 852 C 110 822, 225 726, 308 738 C 396 751, 506 824, 640 854" stroke="#C8BCA3" strokeWidth="0.8" strokeOpacity="0.05" fill="none" strokeLinecap="round" />
-            <path d="M-20 859 C 110 829, 225 733, 308 745 C 396 758, 506 831, 640 861" stroke="#C8BCA3" strokeWidth="0.7" strokeOpacity="0.04" fill="none" strokeLinecap="round" />
+            <path d="M-20 786 C 110 756, 225 660, 308 672 C 396 685, 506 758, 640 788" stroke="#FFFFFF" strokeWidth="0.7" strokeOpacity="0.08" fill="none" strokeLinecap="round" />
+            <path d="M-20 793 C 110 763, 225 667, 308 679 C 396 692, 506 765, 640 795" stroke="#FFFFFF" strokeWidth="0.8" strokeOpacity="0.10" fill="none" strokeLinecap="round" />
+            <path d="M-20 800 C 110 770, 225 674, 308 686 C 396 699, 506 772, 640 802" stroke="#FFFFFF" strokeWidth="0.9" strokeOpacity="0.12" fill="none" strokeLinecap="round" />
+            <path d="M-20 807 C 110 777, 225 681, 308 693 C 396 706, 506 779, 640 809" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
+            <path d="M-20 813 C 110 783, 225 687, 308 699 C 396 712, 506 785, 640 815" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
+            <path d="M-20 819 C 110 789, 225 693, 308 705 C 396 718, 506 791, 640 821" stroke="#FFFFFF" strokeWidth="1.1" strokeOpacity="0.16" fill="none" strokeLinecap="round" />
+            <path d="M-20 825 C 110 795, 225 699, 308 711 C 396 724, 506 797, 640 827" stroke="#FFFFFF" strokeWidth="1.1" strokeOpacity="0.16" fill="none" strokeLinecap="round" />
+            <path d="M-20 831 C 110 801, 225 705, 308 717 C 396 730, 506 803, 640 833" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
+            <path d="M-20 838 C 110 808, 225 712, 308 724 C 396 737, 506 810, 640 840" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
+            <path d="M-20 845 C 110 815, 225 719, 308 731 C 396 744, 506 817, 640 847" stroke="#FFFFFF" strokeWidth="0.9" strokeOpacity="0.12" fill="none" strokeLinecap="round" />
+            <path d="M-20 852 C 110 822, 225 726, 308 738 C 396 751, 506 824, 640 854" stroke="#FFFFFF" strokeWidth="0.8" strokeOpacity="0.10" fill="none" strokeLinecap="round" />
+            <path d="M-20 859 C 110 829, 225 733, 308 745 C 396 758, 506 831, 640 861" stroke="#FFFFFF" strokeWidth="0.7" strokeOpacity="0.08" fill="none" strokeLinecap="round" />
           </svg>
         </div>
       </div>
