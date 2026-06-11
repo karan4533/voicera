@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router";
 import {
-  LayoutDashboard, Phone, BarChart2, HelpCircle, ChevronDown, Bell, Menu, X, LogOut, Users2, BellRing,
+  LayoutDashboard, Phone, BarChart2, HelpCircle, ChevronDown, Bell, Menu, X, LogOut, BellRing,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useAgent, AGENTS } from "../context/AgentContext";
