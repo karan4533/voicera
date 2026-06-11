@@ -21,6 +21,51 @@ export interface QueueContact {
   queueStatus: QueueStatus;
 }
 
+// ── Call Reminders ─────────────────────────────────────────────────────────────
+
+export type ReminderDomain =
+  | "restaurant"
+  | "loan"
+  | "healthcare"
+  | "banking"
+  | "insurance"
+  | "other";
+
+export type ReminderStatus =
+  | "pending"
+  | "calling"
+  | "completed"
+  | "no-answer"
+  | "rescheduled"
+  | "skipped";
+
+export interface ReminderCallHistory {
+  id: string;
+  calledAt: string;
+  duration: string;
+  outcome: string;
+  summary: string;
+}
+
+export interface ReminderContact {
+  id: string;
+  name: string;
+  phone: string;
+  location: string;
+  priority: "High" | "Normal" | "Low";
+  tags: string[];
+  notes: string;
+  domain: ReminderDomain;
+  status: ReminderStatus;
+  scheduledAt: string | null;
+  /** Domain-specific dynamic fields — rendered generically, no per-domain UI needed */
+  attributes: Record<string, string | number | boolean>;
+  callHistory: ReminderCallHistory[];
+  attemptNumber: number;
+  totalAttempts: number;
+}
+
+
 // ── Live Call Session ──────────────────────────────────────────────────────────
 
 export interface TranscriptTurn {

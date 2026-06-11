@@ -32,6 +32,9 @@ import type {
   ClientDomain,
   ExtractedEntity,
   QueueContact,
+  ReminderContact,
+  ReminderDomain,
+  ReminderStatus,
 } from "./types";
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -350,3 +353,69 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   if (USE_MOCK) return mock.fetchSystemHealth();
   return apiFetch<SystemHealth>("/system/health");
 }
+
+// ── Call Reminders ─────────────────────────────────────────────────────────────
+
+/**
+ * GET /reminders
+ * Returns: ReminderContact[]
+ */
+export async function getReminderContacts(): Promise<ReminderContact[]> {
+  if (USE_MOCK) return mock.fetchReminderContacts();
+  return apiFetch<ReminderContact[]>("/reminders");
+}
+
+/**
+ * POST /reminders
+ * Body: Omit<ReminderContact, "id" | "callHistory" | "attemptNumber" | "totalAttempts">
+ * Returns: ReminderContact
+ */
+export async function addReminderContact(
+  data: Omit<ReminderContact, "id" | "callHistory" | "attemptNumber" | "totalAttempts">
+): Promise<ReminderContact> {
+  if (USE_MOCK) return mock.addReminderContact(data);
+  return apiFetch<ReminderContact>("/reminders", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * PATCH /reminders/:id/status
+ * Body: { status }
+ */
+export async function updateReminderStatus(id: string, status: ReminderStatus): Promise<void> {
+  if (USE_MOCK) return mock.updateReminderStatus(id, status);
+  return apiFetch<void>(`/reminders/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+/**
+ * POST /reminders/bulk-import
+ * Body: { rows: Record<string, string>[], domain: ReminderDomain }
+ * Returns: ReminderContact[]
+ */
+export async function bulkImportReminders(
+  file: File,
+  domain: ReminderDomain
+): Promise<ReminderContact[]> {
+  if (USE_MOCK) {
+    const text = await file.text();
+    const rows = parseCsv(text);
+    return mock.bulkImportReminders(rows, domain);
+  }
+  const session = getSession();
+  const form = new FormData();
+  form.append("file", file);
+  form.append("domain", domain);
+  const res = await fetch(`${BASE_URL}/reminders/bulk-import`, {
+    method: "POST",
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+    body: form,
+  });
+  if (!res.ok) throw new Error(`Bulk import failed [${res.status}]`);
+  return res.json();
+}
+

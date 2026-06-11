@@ -1,0 +1,881 @@
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router";
+import {
+  Phone, Search, Plus, Upload, X, ChevronDown, Eye,
+  CheckCircle2, Clock, PhoneOff, RefreshCw, AlertCircle,
+  User, MapPin, Tag, FileText, History, Download,
+} from "lucide-react";
+import {
+  getReminderContacts,
+  addReminderContact,
+  updateReminderStatus,
+  bulkImportReminders,
+} from "../lib/api";
+import { parseCsv } from "../lib/csv";
+import type { ReminderContact, ReminderDomain, ReminderStatus } from "../lib/types";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const DOMAIN_LABELS: Record<ReminderDomain, string> = {
+  restaurant: "Restaurant",
+  loan: "Loan Services",
+  healthcare: "Healthcare",
+  banking: "Banking",
+  insurance: "Insurance",
+  other: "Other",
+};
+
+const DOMAIN_COLORS: Record<ReminderDomain, string> = {
+  restaurant: "bg-orange-50 text-orange-700 border-orange-200",
+  loan: "bg-blue-50 text-blue-700 border-blue-200",
+  healthcare: "bg-green-50 text-green-700 border-green-200",
+  banking: "bg-purple-50 text-purple-700 border-purple-200",
+  insurance: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  other: "bg-gray-50 text-gray-600 border-gray-200",
+};
+
+const DOMAIN_FIELDS: Record<ReminderDomain, { key: string; label: string; type: "text" | "number" | "date" }[]> = {
+  restaurant: [
+    { key: "visitCount", label: "Visit Count", type: "number" },
+    { key: "lastVisitDate", label: "Last Visit Date", type: "date" },
+    { key: "preferredFood", label: "Preferred Food", type: "text" },
+    { key: "reservationHistory", label: "Reservation Notes", type: "text" },
+  ],
+  loan: [
+    { key: "loanType", label: "Loan Type", type: "text" },
+    { key: "loanAmount", label: "Loan Amount (₹)", type: "number" },
+    { key: "emiStatus", label: "EMI Status", type: "text" },
+    { key: "followUpDate", label: "Follow-up Date", type: "date" },
+    { key: "leadSource", label: "Lead Source", type: "text" },
+  ],
+  healthcare: [
+    { key: "appointmentDate", label: "Appointment Date", type: "date" },
+    { key: "doctorName", label: "Doctor Name", type: "text" },
+    { key: "department", label: "Department", type: "text" },
+  ],
+  banking: [
+    { key: "accountType", label: "Account Type", type: "text" },
+    { key: "branch", label: "Branch", type: "text" },
+    { key: "lastTransactionDate", label: "Last Transaction Date", type: "date" },
+  ],
+  insurance: [
+    { key: "policyType", label: "Policy Type", type: "text" },
+    { key: "policyNumber", label: "Policy Number", type: "text" },
+    { key: "renewalDate", label: "Renewal Date", type: "date" },
+  ],
+  other: [],
+};
+
+const STATUS_STYLES: Record<ReminderStatus, string> = {
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  calling: "bg-green-50 text-green-700 border-green-200",
+  completed: "bg-gray-100 text-gray-500 border-gray-200",
+  "no-answer": "bg-orange-50 text-orange-600 border-orange-200",
+  rescheduled: "bg-blue-50 text-blue-600 border-blue-200",
+  skipped: "bg-gray-50 text-gray-400 border-gray-200",
+};
+
+const STATUS_LABELS: Record<ReminderStatus, string> = {
+  pending: "Pending",
+  calling: "In Call",
+  completed: "Completed",
+  "no-answer": "No Answer",
+  rescheduled: "Rescheduled",
+  skipped: "Skipped",
+};
+
+const STATUS_ICONS: Record<ReminderStatus, React.ReactNode> = {
+  pending: <Clock size={10} />,
+  calling: <Phone size={10} />,
+  completed: <CheckCircle2 size={10} />,
+  "no-answer": <PhoneOff size={10} />,
+  rescheduled: <RefreshCw size={10} />,
+  skipped: <AlertCircle size={10} />,
+};
+
+const PRIORITY_STYLES: Record<string, string> = {
+  High: "bg-red-100 text-red-700 border-red-200",
+  Normal: "bg-blue-100 text-blue-700 border-blue-200",
+  Low: "bg-gray-100 text-gray-600 border-gray-200",
+};
+
+// ── Helper: format attribute key to label ─────────────────────────────────────
+function fmtKey(key: string): string {
+  return key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
+}
+
+// ── CSV Template download ─────────────────────────────────────────────────────
+function downloadTemplate() {
+  const csv = "name,phone,location,priority,tags,notes,scheduled_at\nJohn Doe,9999999999,Mumbai,High,VIP|New,Call about renewal,2026-06-15T10:00:00Z";
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "reminders_template.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface AddFormData {
+  name: string; phone: string; location: string;
+  priority: "High" | "Normal" | "Low"; tags: string; notes: string;
+  domain: ReminderDomain; scheduledAt: string;
+  attributes: Record<string, string>;
+}
+
+const EMPTY_FORM: AddFormData = {
+  name: "", phone: "", location: "", priority: "Normal",
+  tags: "", notes: "", domain: "loan", scheduledAt: "",
+  attributes: {},
+};
+
+// ── Main Component ────────────────────────────────────────────────────────────
+export function CallRemindersPage() {
+  const navigate = useNavigate();
+  const [contacts, setContacts] = useState<ReminderContact[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [domainFilter, setDomainFilter] = useState<ReminderDomain | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<ReminderStatus | "all">("all");
+  const [priorityFilter, setPriorityFilter] = useState<"High" | "Normal" | "Low" | "all">("all");
+
+  // Panels
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [detailContact, setDetailContact] = useState<ReminderContact | null>(null);
+
+  // Add customer form
+  const [form, setForm] = useState<AddFormData>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  // Import state
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDomain, setImportDomain] = useState<ReminderDomain>("loan");
+  const [importPreview, setImportPreview] = useState<Record<string, string>[]>([]);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load
+  useEffect(() => {
+    getReminderContacts().then((data) => { setContacts(data); setLoading(false); });
+  }, []);
+
+  // Filtered contacts
+  const filtered = contacts.filter((c) => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || c.name.toLowerCase().includes(q) || c.phone.includes(q);
+    const matchDomain = domainFilter === "all" || c.domain === domainFilter;
+    const matchStatus = statusFilter === "all" || c.status === statusFilter;
+    const matchPriority = priorityFilter === "all" || c.priority === priorityFilter;
+    return matchSearch && matchDomain && matchStatus && matchPriority;
+  });
+
+  // Stats
+  const total = contacts.length;
+  const pending = contacts.filter((c) => c.status === "pending" || c.status === "no-answer").length;
+  const completed = contacts.filter((c) => c.status === "completed").length;
+  const inCall = contacts.filter((c) => c.status === "calling").length;
+
+  // Actions
+  const handleStatusUpdate = async (id: string, status: ReminderStatus) => {
+    await updateReminderStatus(id, status);
+    setContacts((prev) => prev.map((c) => c.id === id ? { ...c, status } : c));
+    if (detailContact?.id === id) setDetailContact((prev) => prev ? { ...prev, status } : null);
+  };
+
+  const handleAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const newContact = await addReminderContact({
+        name: form.name, phone: form.phone, location: form.location,
+        priority: form.priority,
+        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        notes: form.notes, domain: form.domain,
+        status: "pending",
+        scheduledAt: form.scheduledAt || null,
+        attributes: Object.fromEntries(
+          Object.entries(form.attributes).filter(([, v]) => v !== "")
+        ),
+      });
+      setContacts((prev) => [newContact, ...prev]);
+      setDrawerOpen(false);
+      setForm(EMPTY_FORM);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFileSelect = async (file: File) => {
+    setImportFile(file);
+    const text = await file.text();
+    const rows = parseCsv(text);
+    setImportPreview(rows.slice(0, 5));
+  };
+
+  const handleImportConfirm = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const imported = await bulkImportReminders(importFile, importDomain);
+      setContacts((prev) => [...imported, ...prev]);
+      setImportOpen(false);
+      setImportFile(null);
+      setImportPreview([]);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Form field updater
+  const setField = (key: keyof AddFormData, val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
+  const setAttr = (key: string, val: string) =>
+    setForm((f) => ({ ...f, attributes: { ...f.attributes, [key]: val } }));
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* Main content area */}
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${detailContact ? "mr-[380px]" : ""}`}>
+        {/* ── Header ── */}
+        <div className="shrink-0 mb-5">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-[#1E1A14] tracking-tight">Call Reminders</h1>
+              <p className="text-[13px] text-[#7A746C] mt-0.5">Manage outbound reminder calls across all domains</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setImportOpen(true)}
+                className="flex items-center gap-1.5 text-[13px] font-medium px-3 py-2 rounded-lg border border-[#E2DDD5] bg-white text-[#4A453E] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
+              >
+                <Upload size={14} /> Import CSV
+              </button>
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-2 rounded-lg bg-[#B8946A] text-white border-none cursor-pointer hover:bg-[#A07858] transition-colors"
+              >
+                <Plus size={14} /> Add Customer
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Stats strip ── */}
+        <div className="grid grid-cols-4 gap-3 mb-5 shrink-0">
+          {[
+            { label: "Total", value: total, color: "#1E1A14" },
+            { label: "Pending", value: pending, color: "#D97706" },
+            { label: "Completed", value: completed, color: "#16A34A" },
+            { label: "In Call", value: inCall, color: "#2563EB" },
+          ].map((s) => (
+            <div key={s.label} className="bg-white rounded-xl border border-[#E2DDD5] px-4 py-3 shadow-sm">
+              <div className="text-[10px] text-[#9E9890] uppercase tracking-wider mb-0.5">{s.label}</div>
+              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Filter bar ── */}
+        <div className="flex flex-wrap gap-2 mb-4 shrink-0">
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search name or phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+            />
+          </div>
+          {/* Domain filter */}
+          <div className="relative">
+            <select
+              value={domainFilter}
+              onChange={(e) => setDomainFilter(e.target.value as ReminderDomain | "all")}
+              className="appearance-none pl-3 pr-7 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white cursor-pointer focus:outline-none"
+            >
+              <option value="all">All Domains</option>
+              {(Object.keys(DOMAIN_LABELS) as ReminderDomain[]).map((d) => (
+                <option key={d} value={d}>{DOMAIN_LABELS[d]}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
+          </div>
+          {/* Status filter */}
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ReminderStatus | "all")}
+              className="appearance-none pl-3 pr-7 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white cursor-pointer focus:outline-none"
+            >
+              <option value="all">All Statuses</option>
+              {(Object.keys(STATUS_LABELS) as ReminderStatus[]).map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
+          </div>
+          {/* Priority filter */}
+          <div className="relative">
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value as "all" | "High" | "Normal" | "Low")}
+              className="appearance-none pl-3 pr-7 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white cursor-pointer focus:outline-none"
+            >
+              <option value="all">All Priorities</option>
+              <option value="High">High</option>
+              <option value="Normal">Normal</option>
+              <option value="Low">Low</option>
+            </select>
+            <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* ── Table ── */}
+        <div className="flex-1 overflow-auto rounded-xl border border-[#E2DDD5] bg-white shadow-sm">
+          {loading ? (
+            <div className="flex items-center justify-center h-48 text-[13px] text-[#9E9890]">Loading reminders…</div>
+          ) : (
+            <table className="w-full border-collapse text-[13px]">
+              <thead className="sticky top-0 bg-[#FDFDFD] z-10">
+                <tr className="border-b border-[#E2DDD5]">
+                  {["Contact", "Phone", "Domain", "Priority", "Status", "Scheduled", "Tags", "Actions"].map((h) => (
+                    <th key={h} className="text-left text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-16 text-[13px] text-[#9E9890]">
+                      No reminders match your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((c, i) => (
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-[#F9F9F7] transition-colors cursor-pointer ${i < filtered.length - 1 ? "border-b border-[#F0EDE8]" : ""} ${detailContact?.id === c.id ? "bg-[#FDF8F3]" : ""}`}
+                      onClick={() => setDetailContact(c)}
+                    >
+                      {/* Contact */}
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-[#1E1A14]">{c.name}</div>
+                        <div className="text-[11px] text-[#9E9890]">{c.location}</div>
+                      </td>
+                      {/* Phone */}
+                      <td className="px-4 py-3 font-mono text-[12px] text-[#4A453E] whitespace-nowrap">{c.phone}</td>
+                      {/* Domain */}
+                      <td className="px-4 py-3">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${DOMAIN_COLORS[c.domain]}`}>
+                          {DOMAIN_LABELS[c.domain]}
+                        </span>
+                      </td>
+                      {/* Priority */}
+                      <td className="px-4 py-3">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${PRIORITY_STYLES[c.priority]}`}>
+                          {c.priority}
+                        </span>
+                      </td>
+                      {/* Status */}
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[c.status]}`}>
+                          {STATUS_ICONS[c.status]}{STATUS_LABELS[c.status]}
+                        </span>
+                      </td>
+                      {/* Scheduled */}
+                      <td className="px-4 py-3 text-[12px] text-[#7A746C] whitespace-nowrap">
+                        {c.scheduledAt
+                          ? new Date(c.scheduledAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+                          : "—"}
+                      </td>
+                      {/* Tags */}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1 max-w-[160px]">
+                          {c.tags.slice(0, 2).map((t) => (
+                            <span key={t} className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">{t}</span>
+                          ))}
+                          {c.tags.length > 2 && (
+                            <span className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">+{c.tags.length - 2}</span>
+                          )}
+                        </div>
+                      </td>
+                      {/* Actions */}
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            onClick={() => setDetailContact(c)}
+                            title="View Details"
+                            className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#E2DDD5] bg-white text-[#7A746C] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
+                          >
+                            <Eye size={11} /> View
+                          </button>
+                          {(c.status === "pending" || c.status === "no-answer") && (
+                            <>
+                              <button
+                                onClick={() => navigate("/dashboard/live-calls")}
+                                title="Start Call"
+                                className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
+                              >
+                                <Phone size={11} /> Call
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(c.id, "completed")}
+                                title="Mark Completed"
+                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A] cursor-pointer hover:bg-[#DCFCE7] transition-colors"
+                              >
+                                <CheckCircle2 size={11} /> Done
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(c.id, "rescheduled")}
+                                title="Reschedule"
+                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] cursor-pointer hover:bg-[#DBEAFE] transition-colors"
+                              >
+                                <RefreshCw size={11} /> Reschedule
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(c.id, "skipped")}
+                                title="Skip"
+                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] text-[#EF4444] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
+                              >
+                                <PhoneOff size={11} /> End Call
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          DETAIL SIDE PANEL
+      ══════════════════════════════════════════════════════════════ */}
+      {detailContact && (
+        <div className="fixed right-0 top-0 h-full w-[380px] bg-white border-l border-[#E2DDD5] shadow-xl flex flex-col z-30 overflow-hidden">
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] shrink-0 bg-[#FDFDFD]">
+            <div>
+              <div className="font-bold text-[15px] text-[#1E1A14]">{detailContact.name}</div>
+              <div className="text-[12px] text-[#7A746C] font-mono">{detailContact.phone}</div>
+            </div>
+            <button
+              onClick={() => setDetailContact(null)}
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F0EDE8] transition-colors cursor-pointer border-none bg-transparent"
+            >
+              <X size={16} color="#7A746C" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
+            {/* Badges */}
+            <div className="flex flex-wrap gap-2">
+              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${DOMAIN_COLORS[detailContact.domain]}`}>
+                {DOMAIN_LABELS[detailContact.domain]}
+              </span>
+              <span className={`text-[11px] font-bold px-2.5 py-1 rounded border ${PRIORITY_STYLES[detailContact.priority]}`}>
+                {detailContact.priority} Priority
+              </span>
+              <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[detailContact.status]}`}>
+                {STATUS_ICONS[detailContact.status]} {STATUS_LABELS[detailContact.status]}
+              </span>
+            </div>
+
+            {/* Quick info */}
+            <div className="flex flex-col gap-2 text-[13px]">
+              <div className="flex items-center gap-2 text-[#4A453E]">
+                <MapPin size={13} className="text-[#9E9890] shrink-0" />
+                <span>{detailContact.location || "—"}</span>
+              </div>
+              {detailContact.scheduledAt && (
+                <div className="flex items-center gap-2 text-[#4A453E]">
+                  <Clock size={13} className="text-[#9E9890] shrink-0" />
+                  <span>
+                    Scheduled:{" "}
+                    {new Date(detailContact.scheduledAt).toLocaleString("en-IN", {
+                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-[#4A453E]">
+                <User size={13} className="text-[#9E9890] shrink-0" />
+                <span>Attempt {detailContact.attemptNumber} of {detailContact.totalAttempts}</span>
+              </div>
+            </div>
+
+            {/* Tags */}
+            {detailContact.tags.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
+                  <Tag size={11} /> Tags
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {detailContact.tags.map((t) => (
+                    <span key={t} className="text-[11px] bg-[#F0EDE8] text-[#7A746C] px-2 py-0.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {detailContact.notes && (
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
+                  <FileText size={11} /> Notes
+                </div>
+                <p className="text-[13px] text-[#4A453E] leading-relaxed bg-[#F9F9F7] border border-[#E2DDD5] rounded-lg px-3 py-2">
+                  {detailContact.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Dynamic Attributes */}
+            {Object.keys(detailContact.attributes).length > 0 && (
+              <div>
+                <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
+                  {DOMAIN_LABELS[detailContact.domain]} Details
+                </div>
+                <div className="rounded-lg border border-[#E2DDD5] overflow-hidden">
+                  {Object.entries(detailContact.attributes).map(([key, val], i, arr) => (
+                    <div
+                      key={key}
+                      className={`flex items-center justify-between px-3 py-2 text-[12px] ${i < arr.length - 1 ? "border-b border-[#F0EDE8]" : ""}`}
+                    >
+                      <span className="text-[#7A746C] font-medium">{fmtKey(key)}</span>
+                      <span className="text-[#1E1A14] font-semibold text-right max-w-[180px] break-words">
+                        {typeof val === "number" && key.toLowerCase().includes("amount")
+                          ? `₹${val.toLocaleString("en-IN")}`
+                          : String(val)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Call History */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
+                <History size={11} /> Call History
+              </div>
+              {detailContact.callHistory.length === 0 ? (
+                <p className="text-[12px] text-[#9E9890] italic">No calls made yet.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {detailContact.callHistory.map((h) => (
+                    <div key={h.id} className="rounded-lg border border-[#E2DDD5] px-3 py-2.5 bg-[#FDFDFD]">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-[#4A453E]">{h.calledAt}</span>
+                        <span className="text-[11px] text-[#9E9890]">{h.duration}</span>
+                      </div>
+                      <div className="text-[11px] font-semibold text-[#1E1A14] mb-0.5">{h.outcome}</div>
+                      <p className="text-[11px] text-[#7A746C] leading-relaxed">{h.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Panel actions */}
+          <div className="shrink-0 border-t border-[#E2DDD5] px-5 py-3 bg-[#FDFDFD] flex gap-2">
+            {(detailContact.status === "pending" || detailContact.status === "no-answer") && (
+              <button
+                onClick={() => { navigate("/dashboard/live-calls"); setDetailContact(null); }}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-semibold py-2 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
+              >
+                <Phone size={14} /> Start Call
+              </button>
+            )}
+            {(detailContact.status === "pending" || detailContact.status === "no-answer") && (
+              <button
+                onClick={() => handleStatusUpdate(detailContact.id, "completed")}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium py-2 rounded-lg border border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A] cursor-pointer hover:bg-[#DCFCE7] transition-colors"
+              >
+                <CheckCircle2 size={14} /> Mark Done
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          ADD CUSTOMER DRAWER (slides from right)
+      ══════════════════════════════════════════════════════════════ */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 flex">
+          <div className="flex-1 bg-black/30" onClick={() => setDrawerOpen(false)} />
+          <div className="w-[460px] bg-white shadow-2xl flex flex-col h-full overflow-hidden">
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0">
+              <div>
+                <div className="font-bold text-[15px] text-[#1E1A14]">Add Customer</div>
+                <div className="text-[12px] text-[#7A746C]">Create a new reminder contact</div>
+              </div>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F0EDE8] transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <X size={16} color="#7A746C" />
+              </button>
+            </div>
+
+            {/* Drawer form */}
+            <form onSubmit={handleAddSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+              {/* Domain selector — first, because it drives dynamic fields */}
+              <div>
+                <label className="block text-[12px] font-semibold text-[#4A453E] mb-1.5">Business Domain *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(Object.keys(DOMAIN_LABELS) as ReminderDomain[]).map((d) => (
+                    <button
+                      key={d} type="button"
+                      onClick={() => { setField("domain", d); setForm((f) => ({ ...f, domain: d, attributes: {} })); }}
+                      className={`text-[12px] font-medium py-2 px-3 rounded-lg border cursor-pointer transition-all ${
+                        form.domain === d
+                          ? "border-[#B8946A] bg-[#FDF3E3] text-[#B8946A] font-semibold"
+                          : "border-[#E2DDD5] bg-white text-[#7A746C] hover:bg-[#F9F9F7]"
+                      }`}
+                    >
+                      {DOMAIN_LABELS[d]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Common fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Customer Name *</label>
+                  <input required type="text" value={form.name} onChange={(e) => setField("name", e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Phone Number *</label>
+                  <input required type="tel" value={form.phone} onChange={(e) => setField("phone", e.target.value)}
+                    placeholder="+91 9999999999"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Location</label>
+                  <input type="text" value={form.location} onChange={(e) => setField("location", e.target.value)}
+                    placeholder="City, State"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Priority</label>
+                  <select value={form.priority} onChange={(e) => setField("priority", e.target.value)}
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg cursor-pointer focus:outline-none"
+                  >
+                    <option value="High">High</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Tags (comma separated)</label>
+                  <input type="text" value={form.tags} onChange={(e) => setField("tags", e.target.value)}
+                    placeholder="VIP, New Lead"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Scheduled At</label>
+                  <input type="datetime-local" value={form.scheduledAt} onChange={(e) => setField("scheduledAt", e.target.value)}
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Notes</label>
+                <textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)}
+                  rows={2} placeholder="Any relevant notes about this customer..."
+                  className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30 resize-none"
+                />
+              </div>
+
+              {/* Dynamic domain-specific fields */}
+              {DOMAIN_FIELDS[form.domain].length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
+                    {DOMAIN_LABELS[form.domain]} Details
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {DOMAIN_FIELDS[form.domain].map((f) => (
+                      <div key={f.key}>
+                        <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">{f.label}</label>
+                        <input
+                          type={f.type}
+                          value={(form.attributes[f.key] as string) || ""}
+                          onChange={(e) => setAttr(f.key, e.target.value)}
+                          className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </form>
+
+            {/* Drawer footer */}
+            <div className="shrink-0 border-t border-[#E2DDD5] px-6 py-4 flex gap-3">
+              <button type="button" onClick={() => setDrawerOpen(false)}
+                className="flex-1 py-2 text-[13px] font-medium rounded-lg border border-[#E2DDD5] bg-white text-[#7A746C] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSubmit}
+                disabled={saving || !form.name || !form.phone}
+                className="flex-1 py-2 text-[13px] font-semibold rounded-lg bg-[#B8946A] text-white border-none cursor-pointer hover:bg-[#A07858] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {saving ? "Saving…" : "Add Customer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          CSV IMPORT MODAL
+      ══════════════════════════════════════════════════════════════ */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0">
+              <div>
+                <div className="font-bold text-[15px] text-[#1E1A14]">Bulk Import via CSV</div>
+                <div className="text-[12px] text-[#7A746C]">Upload a CSV file to import multiple customers at once</div>
+              </div>
+              <button
+                onClick={() => { setImportOpen(false); setImportFile(null); setImportPreview([]); }}
+                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F0EDE8] transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <X size={16} color="#7A746C" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+              {/* Domain selection */}
+              <div>
+                <label className="block text-[12px] font-semibold text-[#4A453E] mb-1.5">Business Domain *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(Object.keys(DOMAIN_LABELS) as ReminderDomain[]).map((d) => (
+                    <button
+                      key={d} type="button"
+                      onClick={() => setImportDomain(d)}
+                      className={`text-[12px] font-medium py-2 px-3 rounded-lg border cursor-pointer transition-all ${
+                        importDomain === d
+                          ? "border-[#B8946A] bg-[#FDF3E3] text-[#B8946A] font-semibold"
+                          : "border-[#E2DDD5] bg-white text-[#7A746C] hover:bg-[#F9F9F7]"
+                      }`}
+                    >
+                      {DOMAIN_LABELS[d]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upload zone */}
+              <div
+                className="border-2 border-dashed border-[#E2DDD5] rounded-xl p-8 text-center cursor-pointer hover:border-[#B8946A] hover:bg-[#FDF8F3] transition-all"
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }}
+              >
+                <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+                <Upload size={28} className="mx-auto mb-2 text-[#B8946A]" />
+                {importFile ? (
+                  <div>
+                    <div className="text-[13px] font-semibold text-[#1E1A14]">{importFile.name}</div>
+                    <div className="text-[12px] text-[#7A746C]">{(importFile.size / 1024).toFixed(1)} KB · {importPreview.length} rows parsed</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-[13px] font-semibold text-[#4A453E]">Drag & drop or click to upload</div>
+                    <div className="text-[12px] text-[#9E9890] mt-0.5">Supports .csv files</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Template download */}
+              <button
+                type="button" onClick={downloadTemplate}
+                className="flex items-center gap-1.5 text-[12px] text-[#7A746C] hover:text-[#1E1A14] transition-colors cursor-pointer border-none bg-transparent self-start"
+              >
+                <Download size={13} /> Download CSV template
+              </button>
+
+              {/* Preview table */}
+              {importPreview.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
+                    Preview (first {importPreview.length} rows)
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-[#E2DDD5]">
+                    <table className="w-full text-[11px] border-collapse">
+                      <thead className="bg-[#FDFDFD]">
+                        <tr>
+                          {Object.keys(importPreview[0]).map((h) => (
+                            <th key={h} className="text-left px-2 py-1.5 border-b border-[#E2DDD5] text-[#7A746C] font-semibold whitespace-nowrap">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.map((row, i) => (
+                          <tr key={i} className={i < importPreview.length - 1 ? "border-b border-[#F0EDE8]" : ""}>
+                            {Object.values(row).map((val, j) => (
+                              <td key={j} className="px-2 py-1.5 text-[#4A453E] whitespace-nowrap max-w-[120px] truncate">{val}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="shrink-0 border-t border-[#E2DDD5] px-6 py-4 flex gap-3">
+              <button
+                onClick={() => { setImportOpen(false); setImportFile(null); setImportPreview([]); }}
+                className="flex-1 py-2 text-[13px] font-medium rounded-lg border border-[#E2DDD5] bg-white text-[#7A746C] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportConfirm}
+                disabled={!importFile || importing}
+                className="flex-1 py-2 text-[13px] font-semibold rounded-lg bg-[#B8946A] text-white border-none cursor-pointer hover:bg-[#A07858] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {importing ? "Importing…" : `Import ${importPreview.length > 0 ? `(${importPreview.length} rows)` : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

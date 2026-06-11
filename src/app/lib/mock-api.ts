@@ -14,9 +14,105 @@ import type {
   ExtractedEntity,
   QueueContact,
   TranscriptTurn,
+  ReminderContact,
+  ReminderDomain,
+  ReminderStatus,
 } from "./types";
 
-// ── Queue Contacts Mock Data ──────────────────────────────────────────────────
+// ── Call Reminders Mock Data ───────────────────────────────────────────────────
+
+let reminderContacts: ReminderContact[] = [
+  {
+    id: "r1", name: "Amit Sharma", phone: "+91 98765 43210",
+    location: "Mumbai, MH", priority: "High",
+    tags: ["Overdue 60+", "High Value"], notes: "Prefers morning calls. Very responsive.",
+    domain: "loan", status: "pending",
+    scheduledAt: "2026-06-12T10:00:00Z",
+    attributes: { loanType: "Personal Loan", loanAmount: 250000, emiStatus: "Overdue", followUpDate: "2026-06-15", leadSource: "Branch Walk-in" },
+    callHistory: [
+      { id: "ch1", calledAt: "2026-06-08 10:32", duration: "02:15", outcome: "No Answer", summary: "Called but no response. Voicemail left." },
+    ],
+    attemptNumber: 2, totalAttempts: 3,
+  },
+  {
+    id: "r2", name: "Priya Nair", phone: "+91 91234 56789",
+    location: "Bangalore, KA", priority: "Normal",
+    tags: ["VIP Customer", "Regular"], notes: "Prefers pasta and Italian. Table for 2.",
+    domain: "restaurant", status: "pending",
+    scheduledAt: "2026-06-12T19:00:00Z",
+    attributes: { visitCount: 12, lastVisitDate: "2026-06-01", preferredFood: "Pasta Arrabbiata", reservationHistory: "Monthly regulars" },
+    callHistory: [],
+    attemptNumber: 1, totalAttempts: 2,
+  },
+  {
+    id: "r3", name: "Dr. Ravi Kumar", phone: "+91 77665 44332",
+    location: "Delhi, DL", priority: "High",
+    tags: ["Appointment", "Follow-up"], notes: "Post-surgery follow-up appointment reminder.",
+    domain: "healthcare", status: "rescheduled",
+    scheduledAt: "2026-06-13T09:00:00Z",
+    attributes: { appointmentDate: "2026-06-14", doctorName: "Dr. S. Mehta", department: "Orthopedics" },
+    callHistory: [
+      { id: "ch2", calledAt: "2026-06-10 09:00", duration: "01:45", outcome: "Rescheduled", summary: "Patient requested to reschedule to June 14th." },
+    ],
+    attemptNumber: 2, totalAttempts: 3,
+  },
+  {
+    id: "r4", name: "Sunita Patel", phone: "+91 87654 32109",
+    location: "Ahmedabad, GJ", priority: "Normal",
+    tags: ["Account Review"], notes: "Annual account review call.",
+    domain: "banking", status: "pending",
+    scheduledAt: "2026-06-12T11:00:00Z",
+    attributes: { accountType: "Savings", branch: "Navrangpura Branch", lastTransactionDate: "2026-06-05" },
+    callHistory: [],
+    attemptNumber: 1, totalAttempts: 2,
+  },
+  {
+    id: "r5", name: "Karthik Reddy", phone: "+91 90123 45678",
+    location: "Hyderabad, TS", priority: "Low",
+    tags: ["Renewal", "Insurance"], notes: "Policy renewal due next month.",
+    domain: "insurance", status: "completed",
+    scheduledAt: null,
+    attributes: { policyType: "Health Insurance", policyNumber: "HI-2024-98765", renewalDate: "2026-07-01" },
+    callHistory: [
+      { id: "ch3", calledAt: "2026-06-09 14:00", duration: "04:30", outcome: "Completed", summary: "Customer confirmed renewal. Premium paid online. Documents emailed." },
+    ],
+    attemptNumber: 1, totalAttempts: 1,
+  },
+  {
+    id: "r6", name: "Meena Krishnan", phone: "+91 88990 11223",
+    location: "Chennai, TN", priority: "Normal",
+    tags: ["First Contact", "New Lead"], notes: "New inquiry via website contact form.",
+    domain: "loan", status: "no-answer",
+    scheduledAt: "2026-06-12T15:00:00Z",
+    attributes: { loanType: "Home Loan", loanAmount: 3500000, emiStatus: "Prospective", followUpDate: "2026-06-13", leadSource: "Website" },
+    callHistory: [
+      { id: "ch4", calledAt: "2026-06-11 15:00", duration: "00:30", outcome: "No Answer", summary: "Phone rang but no one picked up. Retry scheduled." },
+    ],
+    attemptNumber: 1, totalAttempts: 3,
+  },
+  {
+    id: "r7", name: "Suresh Joshi", phone: "+91 96321 47850",
+    location: "Pune, MH", priority: "High",
+    tags: ["Birthday", "Special Offer"], notes: "Birthday offer call — 20% discount on next visit.",
+    domain: "restaurant", status: "pending",
+    scheduledAt: "2026-06-12T12:00:00Z",
+    attributes: { visitCount: 28, lastVisitDate: "2026-05-15", preferredFood: "Butter Chicken", reservationHistory: "Usually weekends" },
+    callHistory: [],
+    attemptNumber: 1, totalAttempts: 1,
+  },
+  {
+    id: "r8", name: "Anjali Singh", phone: "+91 70012 34567",
+    location: "Kolkata, WB", priority: "High",
+    tags: ["Critical", "ICU Follow-up"], notes: "Post-discharge follow-up from cardiac ward.",
+    domain: "healthcare", status: "pending",
+    scheduledAt: "2026-06-12T08:00:00Z",
+    attributes: { appointmentDate: "2026-06-18", doctorName: "Dr. A. Banerjee", department: "Cardiology" },
+    callHistory: [],
+    attemptNumber: 1, totalAttempts: 2,
+  },
+];
+
+// ── Queue Contacts Mock Data ───────────────────────────────────────────────────
 
 let queueContacts: QueueContact[] = [
   {
@@ -456,4 +552,64 @@ export async function saveSettings(updated: Partial<AppSettings>): Promise<AppSe
   await delay(300);
   settings = { ...settings, ...updated };
   return { ...settings };
+}
+
+// ── Call Reminders Mock Functions ─────────────────────────────────────────────
+
+export async function fetchReminderContacts(): Promise<ReminderContact[]> {
+  await delay(250);
+  return [...reminderContacts];
+}
+
+export async function addReminderContact(
+  data: Omit<ReminderContact, "id" | "callHistory" | "attemptNumber" | "totalAttempts">
+): Promise<ReminderContact> {
+  await delay(300);
+  const newContact: ReminderContact = {
+    ...data,
+    id: `r${Date.now()}`,
+    callHistory: [],
+    attemptNumber: 0,
+    totalAttempts: 3,
+  };
+  reminderContacts = [newContact, ...reminderContacts];
+  return newContact;
+}
+
+export async function updateReminderStatus(id: string, status: ReminderStatus): Promise<void> {
+  await delay(150);
+  reminderContacts = reminderContacts.map((c) =>
+    c.id === id ? { ...c, status } : c
+  );
+}
+
+export async function bulkImportReminders(
+  rows: Record<string, string>[],
+  domain: ReminderDomain
+): Promise<ReminderContact[]> {
+  await delay(500);
+  const imported: ReminderContact[] = rows
+    .filter((r) => r.name && r.phone)
+    .map((r, i) => ({
+      id: `r_import_${Date.now()}_${i}`,
+      name: r.name ?? "Unknown",
+      phone: r.phone ?? "",
+      location: r.location ?? "",
+      priority: (r.priority as ReminderContact["priority"]) ?? "Normal",
+      tags: r.tags ? r.tags.split("|").map((t) => t.trim()) : [],
+      notes: r.notes ?? "",
+      domain,
+      status: "pending" as ReminderStatus,
+      scheduledAt: r.scheduled_at ?? null,
+      attributes: Object.fromEntries(
+        Object.entries(r).filter(
+          ([k]) => !["name","phone","location","priority","tags","notes","scheduled_at"].includes(k)
+        )
+      ),
+      callHistory: [],
+      attemptNumber: 0,
+      totalAttempts: 3,
+    }));
+  reminderContacts = [...imported, ...reminderContacts];
+  return imported;
 }
