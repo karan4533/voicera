@@ -43,9 +43,9 @@ export function CallQueuePage() {
     navigate("/dashboard/live-calls");
   };
 
-  const handleSkip = async (id: string) => {
-    await updateQueueStatus(id, "skipped");
-    setContacts(prev => prev.map(c => c.id === id ? { ...c, queueStatus: "skipped" } : c));
+  const handleEndCall = async (id: string) => {
+    await updateQueueStatus(id, "completed");
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, queueStatus: "completed" } : c));
   };
 
   const filtered = contacts.filter(c => {
@@ -172,10 +172,10 @@ export function CallQueuePage() {
                             <Phone size={11} /> Call Now
                           </button>
                           <button
-                            onClick={() => handleSkip(c.id)}
-                            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#E2DDD5] bg-white text-[#7A746C] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
+                            onClick={() => handleEndCall(c.id)}
+                            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] text-[#EF4444] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
                           >
-                            Skip
+                            End Call
                           </button>
                         </>
                       )}
