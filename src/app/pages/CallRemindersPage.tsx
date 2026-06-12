@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
-  Phone, Search, Plus, Upload, X, ChevronDown, Eye,
+  Phone, Search, Plus, Upload, X, ChevronDown,
   CheckCircle2, Clock, PhoneOff, RefreshCw, AlertCircle,
   User, MapPin, Tag, FileText, History, Download,
 } from "lucide-react";
@@ -43,37 +43,32 @@ const DOMAIN_FIELDS: Record<ReminderDomain, { key: string; label: string; type: 
   ],
 };
 
+// Status config — only the 5 workflow states
 const STATUS_STYLES: Record<ReminderStatus, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  calling: "bg-green-50 text-green-700 border-green-200",
-  completed: "bg-gray-100 text-gray-500 border-gray-200",
+  pending:     "bg-amber-50 text-amber-700 border-amber-200",
+  calling:     "bg-green-50 text-green-700 border-green-200",
+  completed:   "bg-gray-100 text-gray-500 border-gray-200",
   "no-answer": "bg-orange-50 text-orange-600 border-orange-200",
   rescheduled: "bg-blue-50 text-blue-600 border-blue-200",
-  skipped: "bg-gray-50 text-gray-400 border-gray-200",
+  skipped:     "bg-gray-50 text-gray-400 border-gray-200",
 };
 
 const STATUS_LABELS: Record<ReminderStatus, string> = {
-  pending: "Pending",
-  calling: "In Call",
-  completed: "Completed",
+  pending:     "Pending",
+  calling:     "In Call",
+  completed:   "Completed",
   "no-answer": "No Answer",
   rescheduled: "Rescheduled",
-  skipped: "Skipped",
+  skipped:     "Skipped",
 };
 
 const STATUS_ICONS: Record<ReminderStatus, React.ReactNode> = {
-  pending: <Clock size={10} />,
-  calling: <Phone size={10} />,
-  completed: <CheckCircle2 size={10} />,
+  pending:     <Clock size={10} />,
+  calling:     <Phone size={10} />,
+  completed:   <CheckCircle2 size={10} />,
   "no-answer": <PhoneOff size={10} />,
   rescheduled: <RefreshCw size={10} />,
-  skipped: <AlertCircle size={10} />,
-};
-
-const PRIORITY_STYLES: Record<string, string> = {
-  High: "bg-red-100 text-red-700 border-red-200",
-  Normal: "bg-blue-100 text-blue-700 border-blue-200",
-  Low: "bg-gray-100 text-gray-600 border-gray-200",
+  skipped:     <AlertCircle size={10} />,
 };
 
 // ── Helper: format attribute key to label ─────────────────────────────────────
@@ -83,24 +78,24 @@ function fmtKey(key: string): string {
 
 // ── CSV Template download ─────────────────────────────────────────────────────
 function downloadTemplate() {
-  const csv = "name,phone,location,priority,tags,notes,scheduled_at\nJohn Doe,9999999999,Mumbai,High,VIP|New,Call about renewal,2026-06-15T10:00:00Z";
+  const csv = "name,phone,location,tags,notes,scheduled_at\nJohn Doe,9999999999,Mumbai,VIP|New,Call about renewal,2026-06-15T10:00:00Z";
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = "reminders_template.csv"; a.click();
+  a.href = url; a.download = "scheduler_template.csv"; a.click();
   URL.revokeObjectURL(url);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AddFormData {
   name: string; phone: string; location: string;
-  priority: "High" | "Normal" | "Low"; tags: string; notes: string;
+  tags: string; notes: string;
   domain: ReminderDomain; scheduledAt: string;
   attributes: Record<string, string>;
 }
 
 const EMPTY_FORM: AddFormData = {
-  name: "", phone: "", location: "", priority: "Normal",
+  name: "", phone: "", location: "",
   tags: "", notes: "", domain: "loan", scheduledAt: "",
   attributes: {},
 };
@@ -115,14 +110,13 @@ export function CallRemindersPage() {
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReminderStatus | "all">("all");
-  const [priorityFilter, setPriorityFilter] = useState<"High" | "Normal" | "Low" | "all">("all");
 
   // Panels
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [detailContact, setDetailContact] = useState<ReminderContact | null>(null);
 
-  // Add customer form
+  // Add form
   const [form, setForm] = useState<AddFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
@@ -143,21 +137,44 @@ export function CallRemindersPage() {
     const matchSearch = !q || c.name.toLowerCase().includes(q) || c.phone.includes(q);
     const matchDomain = c.domain === agent;
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
-    const matchPriority = priorityFilter === "all" || c.priority === priorityFilter;
-    return matchSearch && matchDomain && matchStatus && matchPriority;
+    return matchSearch && matchDomain && matchStatus;
   });
 
   // Stats
-  const total = contacts.length;
-  const pending = contacts.filter((c) => c.status === "pending" || c.status === "no-answer").length;
-  const completed = contacts.filter((c) => c.status === "completed").length;
-  const inCall = contacts.filter((c) => c.status === "calling").length;
+  const total     = contacts.filter(c => c.domain === agent).length;
+  const pending   = contacts.filter(c => c.domain === agent && (c.status === "pending" || c.status === "no-answer")).length;
+  const completed = contacts.filter(c => c.domain === agent && c.status === "completed").length;
+  const inCall    = contacts.filter(c => c.domain === agent && c.status === "calling").length;
 
-  // Actions
+  // ── Actions ───────────────────────────────────────────────────────────────
+
   const handleStatusUpdate = async (id: string, status: ReminderStatus) => {
     await updateReminderStatus(id, status);
     setContacts((prev) => prev.map((c) => c.id === id ? { ...c, status } : c));
     if (detailContact?.id === id) setDetailContact((prev) => prev ? { ...prev, status } : null);
+  };
+
+  /** Reschedule: move to now + 4 hours, no popup needed */
+  const handleReschedule = async (c: ReminderContact) => {
+    const newTime = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
+    await updateReminderStatus(c.id, "rescheduled");
+    setContacts((prev) =>
+      prev.map((x) => x.id === c.id ? { ...x, status: "rescheduled", scheduledAt: newTime } : x)
+    );
+    if (detailContact?.id === c.id)
+      setDetailContact((prev) => prev ? { ...prev, status: "rescheduled", scheduledAt: newTime } : null);
+  };
+
+  /** Start Call → navigate to Live Calls, set status to "calling" (In Call) */
+  const handleStartCall = async (c: ReminderContact) => {
+    await updateReminderStatus(c.id, "calling");
+    setContacts((prev) => prev.map((x) => x.id === c.id ? { ...x, status: "calling" } : x));
+    navigate(`/dashboard/live-calls?start=${c.id}`);
+  };
+
+  /** End Call → status becomes "completed" */
+  const handleEndCall = async (c: ReminderContact) => {
+    await handleStatusUpdate(c.id, "completed");
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -166,7 +183,7 @@ export function CallRemindersPage() {
     try {
       const newContact = await addReminderContact({
         name: form.name, phone: form.phone, location: form.location,
-        priority: form.priority,
+        priority: "Normal",
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
         notes: form.notes, domain: agent as ReminderDomain,
         status: "pending",
@@ -204,7 +221,6 @@ export function CallRemindersPage() {
     }
   };
 
-  // Form field updater
   const setField = (key: keyof AddFormData, val: string) =>
     setForm((f) => ({ ...f, [key]: val }));
   const setAttr = (key: string, val: string) =>
@@ -214,12 +230,13 @@ export function CallRemindersPage() {
     <div className="flex h-full overflow-hidden">
       {/* Main content area */}
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${detailContact ? "mr-[380px]" : ""}`}>
+
         {/* ── Header ── */}
         <div className="shrink-0 mb-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h1 className="text-xl font-bold text-[#1E1A14] tracking-tight">{agentLabel} Reminders</h1>
-              <p className="text-[13px] text-[#7A746C] mt-0.5">Manage outbound reminder calls for {agentLabel.toLowerCase()}</p>
+              <h1 className="text-xl font-bold text-[#1E1A14] tracking-tight">{agentLabel} Call Scheduler</h1>
+              <p className="text-[13px] text-[#7A746C] mt-0.5">Schedule, manage, and initiate outbound calls for {agentLabel.toLowerCase()}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -241,10 +258,10 @@ export function CallRemindersPage() {
         {/* ── Stats strip ── */}
         <div className="grid grid-cols-4 gap-3 mb-5 shrink-0">
           {[
-            { label: "Total", value: total, color: "#1E1A14" },
-            { label: "Pending", value: pending, color: "#D97706" },
+            { label: "Total",     value: total,     color: "#1E1A14" },
+            { label: "Pending",   value: pending,   color: "#D97706" },
             { label: "Completed", value: completed, color: "#16A34A" },
-            { label: "In Call", value: inCall, color: "#2563EB" },
+            { label: "In Call",   value: inCall,    color: "#2563EB" },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-[#E2DDD5] px-4 py-3 shadow-sm">
               <div className="text-[10px] text-[#9E9890] uppercase tracking-wider mb-0.5">{s.label}</div>
@@ -265,7 +282,6 @@ export function CallRemindersPage() {
               className="w-full pl-8 pr-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
             />
           </div>
-          {/* Status filter */}
           <div className="relative">
             <select
               value={statusFilter}
@@ -273,23 +289,11 @@ export function CallRemindersPage() {
               className="appearance-none pl-3 pr-7 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white cursor-pointer focus:outline-none"
             >
               <option value="all">All Statuses</option>
-              {(Object.keys(STATUS_LABELS) as ReminderStatus[]).map((s) => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
-          </div>
-          {/* Priority filter */}
-          <div className="relative">
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value as "all" | "High" | "Normal" | "Low")}
-              className="appearance-none pl-3 pr-7 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white cursor-pointer focus:outline-none"
-            >
-              <option value="all">All Priorities</option>
-              <option value="High">High</option>
-              <option value="Normal">Normal</option>
-              <option value="Low">Low</option>
+              <option value="pending">Pending</option>
+              <option value="calling">In Call</option>
+              <option value="completed">Completed</option>
+              <option value="skipped">Skipped</option>
+              <option value="rescheduled">Rescheduled</option>
             </select>
             <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
           </div>
@@ -298,12 +302,12 @@ export function CallRemindersPage() {
         {/* ── Table ── */}
         <div className="flex-1 overflow-auto rounded-xl border border-[#E2DDD5] bg-white shadow-sm">
           {loading ? (
-            <div className="flex items-center justify-center h-48 text-[13px] text-[#9E9890]">Loading reminders…</div>
+            <div className="flex items-center justify-center h-48 text-[13px] text-[#9E9890]">Loading scheduled calls…</div>
           ) : (
             <table className="w-full border-collapse text-[13px]">
               <thead className="sticky top-0 bg-[#FDFDFD] z-10">
                 <tr className="border-b border-[#E2DDD5]">
-                  {["Contact", "Phone", "Priority", "Status", "Scheduled", "Tags", "Actions"].map((h) => (
+                  {["Customer Name", "Phone Number", "Location", "Tags", "Status", "Scheduled", "Actions"].map((h) => (
                     <th key={h} className="text-left text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider px-4 py-3 whitespace-nowrap">
                       {h}
                     </th>
@@ -313,8 +317,8 @@ export function CallRemindersPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-16 text-[13px] text-[#9E9890]">
-                      No reminders match your filters.
+                    <td colSpan={7} className="text-center py-16 text-[13px] text-[#9E9890]">
+                      No scheduled calls match your filters.
                     </td>
                   </tr>
                 ) : (
@@ -324,18 +328,24 @@ export function CallRemindersPage() {
                       className={`hover:bg-[#F9F9F7] transition-colors cursor-pointer ${i < filtered.length - 1 ? "border-b border-[#F0EDE8]" : ""} ${detailContact?.id === c.id ? "bg-[#FDF8F3]" : ""}`}
                       onClick={() => setDetailContact(c)}
                     >
-                      {/* Contact */}
+                      {/* Customer Name */}
                       <td className="px-4 py-3">
                         <div className="font-semibold text-[#1E1A14]">{c.name}</div>
-                        <div className="text-[11px] text-[#9E9890]">{c.location}</div>
                       </td>
-                      {/* Phone */}
+                      {/* Phone Number */}
                       <td className="px-4 py-3 font-mono text-[12px] text-[#4A453E] whitespace-nowrap">{c.phone}</td>
-                      {/* Priority */}
+                      {/* Location */}
+                      <td className="px-4 py-3 text-[12px] text-[#7A746C]">{c.location || "—"}</td>
+                      {/* Tags */}
                       <td className="px-4 py-3">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${PRIORITY_STYLES[c.priority]}`}>
-                          {c.priority}
-                        </span>
+                        <div className="flex flex-wrap gap-1 max-w-[160px]">
+                          {c.tags.slice(0, 2).map((t) => (
+                            <span key={t} className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">{t}</span>
+                          ))}
+                          {c.tags.length > 2 && (
+                            <span className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">+{c.tags.length - 2}</span>
+                          )}
+                        </div>
                       </td>
                       {/* Status */}
                       <td className="px-4 py-3">
@@ -349,58 +359,48 @@ export function CallRemindersPage() {
                           ? new Date(c.scheduledAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
                           : "—"}
                       </td>
-                      {/* Tags */}
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1 max-w-[160px]">
-                          {c.tags.slice(0, 2).map((t) => (
-                            <span key={t} className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">{t}</span>
-                          ))}
-                          {c.tags.length > 2 && (
-                            <span className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">+{c.tags.length - 2}</span>
-                          )}
-                        </div>
-                      </td>
                       {/* Actions */}
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <button
-                            onClick={() => setDetailContact(c)}
-                            title="View Details"
-                            className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#E2DDD5] bg-white text-[#7A746C] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
-                          >
-                            <Eye size={11} /> View
-                          </button>
+                          {/* Start Call — for pending / rescheduled / no-answer */}
+                          {(c.status === "pending" || c.status === "rescheduled" || c.status === "no-answer") && (
+                            <button
+                              onClick={() => handleStartCall(c)}
+                              title="Start Call"
+                              className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
+                            >
+                              <Phone size={11} /> Start Call
+                            </button>
+                          )}
+                          {/* End Call — only while In Call */}
+                          {c.status === "calling" && (
+                            <button
+                              onClick={() => handleEndCall(c)}
+                              title="End Call"
+                              className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#DC2626] text-white border-none cursor-pointer hover:bg-[#B91C1C] transition-colors"
+                            >
+                              <PhoneOff size={11} /> End Call
+                            </button>
+                          )}
+                          {/* Skip — available for pending / no-answer */}
                           {(c.status === "pending" || c.status === "no-answer") && (
-                            <>
-                              <button
-                                onClick={() => navigate("/dashboard/live-calls")}
-                                title="Start Call"
-                                className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
-                              >
-                                <Phone size={11} /> Call
-                              </button>
-                              <button
-                                onClick={() => handleStatusUpdate(c.id, "completed")}
-                                title="Mark Completed"
-                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A] cursor-pointer hover:bg-[#DCFCE7] transition-colors"
-                              >
-                                <CheckCircle2 size={11} /> Done
-                              </button>
-                              <button
-                                onClick={() => handleStatusUpdate(c.id, "rescheduled")}
-                                title="Reschedule"
-                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] cursor-pointer hover:bg-[#DBEAFE] transition-colors"
-                              >
-                                <RefreshCw size={11} /> Reschedule
-                              </button>
-                              <button
-                                onClick={() => handleStatusUpdate(c.id, "skipped")}
-                                title="Skip"
-                                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] text-[#EF4444] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
-                              >
-                                <PhoneOff size={11} /> End Call
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleStatusUpdate(c.id, "skipped")}
+                              title="Skip"
+                              className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] text-[#EF4444] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
+                            >
+                              <AlertCircle size={11} /> Skip
+                            </button>
+                          )}
+                          {/* Reschedule — available for pending / no-answer / skipped */}
+                          {(c.status === "pending" || c.status === "no-answer" || c.status === "skipped") && (
+                            <button
+                              onClick={() => handleReschedule(c)}
+                              title="Reschedule (+4h)"
+                              className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] cursor-pointer hover:bg-[#DBEAFE] transition-colors"
+                            >
+                              <RefreshCw size={11} /> Reschedule
+                            </button>
                           )}
                         </div>
                       </td>
@@ -437,9 +437,6 @@ export function CallRemindersPage() {
             <div className="flex flex-wrap gap-2">
               <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${DOMAIN_COLORS[detailContact.domain]}`}>
                 {DOMAIN_LABELS[detailContact.domain]}
-              </span>
-              <span className={`text-[11px] font-bold px-2.5 py-1 rounded border ${PRIORITY_STYLES[detailContact.priority]}`}>
-                {detailContact.priority} Priority
               </span>
               <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[detailContact.status]}`}>
                 {STATUS_ICONS[detailContact.status]} {STATUS_LABELS[detailContact.status]}
@@ -545,20 +542,28 @@ export function CallRemindersPage() {
 
           {/* Panel actions */}
           <div className="shrink-0 border-t border-[#E2DDD5] px-5 py-3 bg-[#FDFDFD] flex gap-2">
-            {(detailContact.status === "pending" || detailContact.status === "no-answer") && (
+            {(detailContact.status === "pending" || detailContact.status === "no-answer" || detailContact.status === "rescheduled") && (
               <button
-                onClick={() => { navigate("/dashboard/live-calls"); setDetailContact(null); }}
+                onClick={() => { handleStartCall(detailContact); setDetailContact(null); }}
                 className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-semibold py-2 rounded-lg bg-[#22C55E] text-white border-none cursor-pointer hover:bg-[#16A34A] transition-colors"
               >
                 <Phone size={14} /> Start Call
               </button>
             )}
-            {(detailContact.status === "pending" || detailContact.status === "no-answer") && (
+            {detailContact.status === "calling" && (
               <button
-                onClick={() => handleStatusUpdate(detailContact.id, "completed")}
-                className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium py-2 rounded-lg border border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A] cursor-pointer hover:bg-[#DCFCE7] transition-colors"
+                onClick={() => handleEndCall(detailContact)}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-semibold py-2 rounded-lg bg-[#DC2626] text-white border-none cursor-pointer hover:bg-[#B91C1C] transition-colors"
               >
-                <CheckCircle2 size={14} /> Mark Done
+                <PhoneOff size={14} /> End Call
+              </button>
+            )}
+            {(detailContact.status === "pending" || detailContact.status === "no-answer" || detailContact.status === "skipped") && (
+              <button
+                onClick={() => handleReschedule(detailContact)}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium py-2 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] cursor-pointer hover:bg-[#DBEAFE] transition-colors"
+              >
+                <RefreshCw size={14} /> Reschedule +4h
               </button>
             )}
           </div>
@@ -566,17 +571,16 @@ export function CallRemindersPage() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════
-          ADD CUSTOMER DRAWER (slides from right)
+          ADD CUSTOMER DRAWER
       ══════════════════════════════════════════════════════════════ */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 flex">
           <div className="flex-1 bg-black/30" onClick={() => setDrawerOpen(false)} />
           <div className="w-[460px] bg-white shadow-2xl flex flex-col h-full overflow-hidden">
-            {/* Drawer header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0">
               <div>
                 <div className="font-bold text-[15px] text-[#1E1A14]">Add Customer</div>
-                <div className="text-[12px] text-[#7A746C]">Create a new reminder contact</div>
+                <div className="text-[12px] text-[#7A746C]">Schedule a new outbound call</div>
               </div>
               <button
                 onClick={() => setDrawerOpen(false)}
@@ -586,9 +590,7 @@ export function CallRemindersPage() {
               </button>
             </div>
 
-            {/* Drawer form */}
             <form onSubmit={handleAddSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
-              {/* Common fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Customer Name *</label>
@@ -614,30 +616,18 @@ export function CallRemindersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Priority</label>
-                  <select value={form.priority} onChange={(e) => setField("priority", e.target.value)}
-                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg cursor-pointer focus:outline-none"
-                  >
-                    <option value="High">High</option>
-                    <option value="Normal">Normal</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Tags (comma separated)</label>
-                  <input type="text" value={form.tags} onChange={(e) => setField("tags", e.target.value)}
-                    placeholder="VIP, New Lead"
-                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
-                  />
-                </div>
-                <div>
                   <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Scheduled At</label>
                   <input type="datetime-local" value={form.scheduledAt} onChange={(e) => setField("scheduledAt", e.target.value)}
                     className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Tags (comma separated)</label>
+                <input type="text" value={form.tags} onChange={(e) => setField("tags", e.target.value)}
+                  placeholder="VIP, New Lead"
+                  className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                />
               </div>
               <div>
                 <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Notes</label>
@@ -647,7 +637,6 @@ export function CallRemindersPage() {
                 />
               </div>
 
-              {/* Dynamic domain-specific fields */}
               {DOMAIN_FIELDS[agent as ReminderDomain].length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
@@ -670,7 +659,6 @@ export function CallRemindersPage() {
               )}
             </form>
 
-            {/* Drawer footer */}
             <div className="shrink-0 border-t border-[#E2DDD5] px-6 py-4 flex gap-3">
               <button type="button" onClick={() => setDrawerOpen(false)}
                 className="flex-1 py-2 text-[13px] font-medium rounded-lg border border-[#E2DDD5] bg-white text-[#7A746C] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
@@ -695,7 +683,6 @@ export function CallRemindersPage() {
       {importOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0">
               <div>
                 <div className="font-bold text-[15px] text-[#1E1A14]">Bulk Import via CSV</div>
@@ -710,7 +697,6 @@ export function CallRemindersPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-              {/* Upload zone */}
               <div
                 className="border-2 border-dashed border-[#E2DDD5] rounded-xl p-8 text-center cursor-pointer hover:border-[#B8946A] hover:bg-[#FDF8F3] transition-all"
                 onClick={() => fileRef.current?.click()}
@@ -733,7 +719,6 @@ export function CallRemindersPage() {
                 )}
               </div>
 
-              {/* Template download */}
               <button
                 type="button" onClick={downloadTemplate}
                 className="flex items-center gap-1.5 text-[12px] text-[#7A746C] hover:text-[#1E1A14] transition-colors cursor-pointer border-none bg-transparent self-start"
@@ -741,7 +726,6 @@ export function CallRemindersPage() {
                 <Download size={13} /> Download CSV template
               </button>
 
-              {/* Preview table */}
               {importPreview.length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
@@ -773,7 +757,6 @@ export function CallRemindersPage() {
               )}
             </div>
 
-            {/* Modal footer */}
             <div className="shrink-0 border-t border-[#E2DDD5] px-6 py-4 flex gap-3">
               <button
                 onClick={() => { setImportOpen(false); setImportFile(null); setImportPreview([]); }}

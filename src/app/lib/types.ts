@@ -181,10 +181,10 @@ export interface SystemHealth {
 }
 
 export interface DashboardMetrics {
-  totalCallsToday: number;
-  overallCsat: number;
-  avgLatencyMs: number;
-  activeAgents: number;
+  totalCalls: number;
+  activeCalls: number;
+  connectedCalls: number;
+  pendingFollowUps: number;
 }
 
 export interface AnalyticsMetrics {
@@ -211,4 +211,6 @@ export interface ExtractedEntity {
   status: "Pending" | "Synced" | "Action Required";
   timestamp: string;
   callId?: string;
+  summary?: string;
+  transcript?: string;
 }

@@ -9,11 +9,12 @@ import { getSystemHealth } from "../lib/api";
 import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
-  { icon: BellRing, label: "Call Reminders", path: "/dashboard/call-reminders" },
-  { icon: Phone, label: "Live Calls", path: "/dashboard/live-calls" },
-  { icon: BarChart2, label: "Analytics", path: "/dashboard/analytics" },
+  { icon: LayoutDashboard, label: "Dashboard",       path: "/dashboard/monitoring" },
+  { icon: BellRing,        label: "Call Scheduler",  path: "/dashboard/call-reminders" },
+  { icon: Phone,           label: "Live Calls",      path: "/dashboard/live-calls" },
+  { icon: BarChart2,       label: "Analytics",       path: "/dashboard/analytics" },
 ];
+
 
 function NavItem({ icon: Icon, label, path, end, onNavigate }: {
   icon: typeof Phone; label: string; path: string; end?: boolean; onNavigate?: () => void;

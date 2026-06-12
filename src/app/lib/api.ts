@@ -89,7 +89,7 @@ export async function loginUser(email: string, password: string) {
 
 /**
  * GET /dashboard/metrics
- * Returns: { totalCallsToday, overallCsat, avgLatencyMs, activeAgents }
+ * Returns: { totalCalls, activeCalls, connectedCalls, pendingFollowUps }
  */
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   if (USE_MOCK) return mock.fetchDashboardMetrics();

@@ -40,8 +40,9 @@ export default function App() {
               }
             >
               <Route index element={<DashboardPage />} />
-              <Route path="live-calls" element={<LiveCallsPage />} />
               <Route path="call-reminders" element={<CallRemindersPage />} />
+              <Route path="live-calls" element={<LiveCallsPage />} />
+              <Route path="monitoring" element={<DashboardPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

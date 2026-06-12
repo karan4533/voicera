@@ -1,121 +1,23 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Phone, PhoneOff, Mic, MicOff, Pause, Play, ArrowRightLeft,
-  MapPin, Briefcase, Clock, Users
+  MapPin, Briefcase, Clock
 } from "lucide-react";
 import { getReminderContacts, updateReminderStatus } from "../lib/api";
 import { PAYMENT_SCRIPT } from "../lib/mock-api";
 import { formatDuration } from "../lib/csv";
 import type { ReminderContact, LiveCallSession, TranscriptTurn } from "../lib/types";
-import { useAgent } from "../context/AgentContext";
 
-// ── Priority helpers ──────────────────────────────────────────────────────────
-const PRIORITY_STYLES: Record<string, string> = {
-  High:   "bg-red-100 text-red-700 border-red-200",
-  Normal: "bg-blue-100 text-blue-700 border-blue-200",
-  Low:    "bg-gray-100 text-gray-600 border-gray-200",
-};
 
-const STATUS_STYLES: Record<string, string> = {
-  pending:    "bg-amber-50 text-amber-700",
-  calling:    "bg-green-50 text-green-700",
-  completed:  "bg-gray-100 text-gray-500",
-  "no-answer":"bg-orange-50 text-orange-600",
-  skipped:    "bg-gray-100 text-gray-400",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pending:    "Pending",
-  calling:    "In Call",
-  completed:  "Done",
-  "no-answer":"No Answer",
-  skipped:    "Skipped",
-};
-
-// ── Waveform bars (AI speaking indicator) ────────────────────────────────────
-function WaveformBars({ active }: { active: boolean }) {
-  return (
-    <div className="flex items-end gap-[3px] h-6">
-      {[3, 5, 4, 6, 3, 5, 4, 6, 3].map((h, i) => (
-        <div
-          key={i}
-          className="w-[3px] rounded-full bg-[#C8872A] transition-all duration-150"
-          style={{
-            height: active ? `${h * 3 + Math.random() * 4}px` : "4px",
-            opacity: active ? 1 : 0.3,
-            animationDelay: `${i * 80}ms`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Queue contact card ────────────────────────────────────────────────────────
-function QueueCard({
-  contact, isSelected, isActive, onSelect, onStart,
-}: {
-  contact: ReminderContact;
-  isSelected: boolean;
-  isActive: boolean;
-  onSelect: () => void;
-  onStart: () => void;
-}) {
-  const canCall = contact.status === "pending" || contact.status === "no-answer";
-  return (
-    <div
-      onClick={onSelect}
-      className={`px-4 py-3 cursor-pointer border-b border-[#F0EDE8] transition-colors ${
-        isSelected ? "bg-[#FDF3E3]" : "hover:bg-[#F9F9F7]"
-      } ${isActive ? "opacity-50 pointer-events-none" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-[13px] text-[#1E1A14] truncate">{contact.name}</span>
-            <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border ${PRIORITY_STYLES[contact.priority]}`}>
-              {contact.priority}
-            </span>
-          </div>
-          <div className="text-[11px] text-[#7A746C] font-mono mb-1.5">{contact.phone}</div>
-          <div className="flex flex-wrap gap-1">
-            {contact.tags.slice(0, 2).map(tag => (
-              <span key={tag} className="text-[10px] bg-[#F0EDE8] text-[#7A746C] px-1.5 py-0.5 rounded-full">
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[contact.status]}`}>
-            {STATUS_LABELS[contact.status]}
-          </span>
-          <span className="text-[10px] text-[#9E9890]">{contact.attemptNumber}/{contact.totalAttempts} attempts</span>
-          {isSelected && canCall && !isActive && (
-            <button
-              id={`start-call-${contact.id}`}
-              onClick={(e) => { e.stopPropagation(); onStart(); }}
-              className="flex items-center gap-1 bg-[#22C55E] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-[#16A34A] transition-colors cursor-pointer border-none"
-            >
-              <Phone size={11} />
-              Start Call
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function LiveCallsPage() {
   const navigate = useNavigate();
-  const { agent } = useAgent();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Queue state
   const [queue, setQueue] = useState<ReminderContact[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Live call state
   const [session, setSession] = useState<LiveCallSession | null>(null);
@@ -132,6 +34,49 @@ export function LiveCallsPage() {
   const loadQueue = useCallback(() => {
     getReminderContacts().then(setQueue);
   }, []);
+
+  // Handle Start Call (moved up so it can be used in the auto-start effect)
+  const handleStartCall = useCallback(async (contact: ReminderContact) => {
+    // Mark calling in queue
+    await updateReminderStatus(contact.id, "calling");
+    setQueue(prev => prev.map(c => c.id === contact.id ? { ...c, status: "calling" } : c));
+
+    const newSession: LiveCallSession = {
+      contactId: contact.id,
+      contact,
+      startedAt: Date.now(),
+      status: "dialing",
+      sentiment: 0.5,
+      engagement: 0.6,
+      nluConfidence: 0.94,
+      aiSpeaking: false,
+      isMuted: false,
+      isOnHold: false,
+      autoSummarize: true,
+      transcript: [],
+    };
+
+    setSession(newSession);
+
+    // Dialing → Active after 1.5s
+    dialTimerRef.current = setTimeout(() => {
+      setSession(prev => prev ? { ...prev, status: "active" } : prev);
+      // We will call startTranscriptSim below, but it's okay to delay it or inline it
+    }, 1500);
+  }, []);
+
+  // Auto-start from navigation parameters
+  useEffect(() => {
+    const startId = searchParams.get("start");
+    if (startId && queue.length > 0 && !session) {
+      const contact = queue.find(c => c.id === startId);
+      if (contact && (contact.status === "pending" || contact.status === "no-answer" || contact.status === "calling" || contact.status === "rescheduled")) {
+        handleStartCall(contact);
+        searchParams.delete("start");
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, queue, session, handleStartCall, setSearchParams]);
 
   useEffect(() => {
     loadQueue();
@@ -190,35 +135,12 @@ export function LiveCallsPage() {
     }, 3500);
   }, []);
 
-  // Handle Start Call
-  const handleStartCall = useCallback(async (contact: ReminderContact) => {
-    // Mark calling in queue
-    await updateReminderStatus(contact.id, "calling");
-    setQueue(prev => prev.map(c => c.id === contact.id ? { ...c, status: "calling" } : c));
-
-    const newSession: LiveCallSession = {
-      contactId: contact.id,
-      contact,
-      startedAt: Date.now(),
-      status: "dialing",
-      sentiment: 0.5,
-      engagement: 0.6,
-      nluConfidence: 0.94,
-      aiSpeaking: false,
-      isMuted: false,
-      isOnHold: false,
-      autoSummarize: true,
-      transcript: [],
-    };
-
-    setSession(newSession);
-
-    // Dialing → Active after 1.5s
-    dialTimerRef.current = setTimeout(() => {
-      setSession(prev => prev ? { ...prev, status: "active" } : prev);
-      startTranscriptSim(newSession);
-    }, 1500);
-  }, [startTranscriptSim]);
+  // Start the transcript simulator once the session becomes active
+  useEffect(() => {
+    if (session?.status === "active" && session.transcript.length === 0) {
+      startTranscriptSim(session);
+    }
+  }, [session?.status, session?.transcript.length, startTranscriptSim, session]);
 
   // Handle End Call
   const handleEndCall = useCallback(async () => {
@@ -231,10 +153,9 @@ export function LiveCallsPage() {
     setQueue(prev => prev.map(c => c.id === session.contactId ? { ...c, status: "completed" } : c));
 
     setSession(null);
-    setSelectedId(null);
 
-    // Navigate to analytics to review the call
-    navigate("/dashboard/analytics");
+    // Navigate to monitoring to review the call results
+    navigate("/dashboard/monitoring");
   }, [session, navigate]);
 
   // Toggle mute
@@ -250,13 +171,6 @@ export function LiveCallsPage() {
     if (dialTimerRef.current) clearTimeout(dialTimerRef.current);
   }, []);
 
-  // Derived stats
-  const pendingCount = queue.filter(c => c.status === "pending" || c.status === "no-answer").length;
-  const filteredQueue = queue.filter(c => c.domain === agent);
-  
-  const completedCount = queue.filter(c => c.status === "completed").length;
-  const conversionRate = queue.length > 0 ? Math.round((completedCount / queue.length) * 100) : 0;
-
   // Auto-scroll transcript
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -264,54 +178,10 @@ export function LiveCallsPage() {
   }, [session?.transcript.length]);
 
   return (
-    <div className="flex -m-4 sm:-m-6 lg:-m-7" style={{ height: "calc(100vh - 56px)" }}>
+    <div className="flex flex-col -m-4 sm:-m-6 lg:-m-7 bg-[#F9F9F7]" style={{ height: "calc(100vh - 56px)" }}>
 
-      {/* ── Left: Queue Panel ─────────────────────────────────────────────── */}
-      <div className="w-[300px] shrink-0 flex flex-col border-r border-[#E2DDD5] bg-white overflow-hidden">
-
-        {/* Stats bar */}
-        <div className="px-4 py-3 border-b border-[#E2DDD5] bg-[#FDFDFD]">
-          <div className="text-[11px] font-bold text-[#7A746C] uppercase tracking-wider mb-2">Queue Overview</div>
-          <div className="flex gap-4">
-            <div className="text-center">
-              <div className="text-xl font-bold text-[#1E1A14]">{filteredQueue.length}</div>
-              <div className="text-[10px] text-[#9E9890]">Total</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-[#C8872A]">{pendingCount}</div>
-              <div className="text-[10px] text-[#9E9890]">In Queue</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-[#22C55E]">{conversionRate}%</div>
-              <div className="text-[10px] text-[#9E9890]">Done</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Queue List */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredQueue.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <Users size={28} className="text-[#D4CBBF] mb-2" />
-              <p className="text-[12px] text-[#9E9890]">No contacts in queue</p>
-            </div>
-          ) : (
-            filteredQueue.map(contact => (
-              <QueueCard
-                key={contact.id}
-                contact={contact}
-                isSelected={selectedId === contact.id}
-                isActive={!!session && session.contactId !== contact.id}
-                onSelect={() => setSelectedId(contact.id)}
-                onStart={() => handleStartCall(contact)}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ── Right: Active Call Panel ─────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F9F9F7] overflow-hidden">
+      {/* ── Active Call Panel ─────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* No active call */}
         {!session && (
@@ -319,10 +189,16 @@ export function LiveCallsPage() {
             <div className="w-16 h-16 rounded-full bg-[#F0EDE8] flex items-center justify-center mb-4">
               <Phone size={28} className="text-[#C8872A]" />
             </div>
-            <h2 className="text-xl font-bold text-[#1E1A14] mb-2">Ready to Call</h2>
-            <p className="text-[13px] text-[#7A746C] max-w-xs">
-              Select a contact from the queue on the left and click <strong>Start Call</strong> to initiate an outbound AI call.
+            <h2 className="text-xl font-bold text-[#1E1A14] mb-2">No Active Call</h2>
+            <p className="text-[13px] text-[#7A746C] max-w-sm mx-auto">
+              You don't have any ongoing calls. Go to <strong>Call Scheduler</strong> to select a lead and initiate an outbound AI call.
             </p>
+            <button 
+              onClick={() => navigate("/dashboard/call-reminders")}
+              className="mt-6 px-4 py-2 bg-[#1E1A14] text-white rounded-lg text-[13px] font-semibold hover:bg-[#322C23] transition-colors"
+            >
+              Go to Call Scheduler
+            </button>
           </div>
         )}
 
@@ -370,7 +246,38 @@ export function LiveCallsPage() {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-bold text-[#1E1A14] mb-0.5">{session.contact.name}</h2>
+                    <div className="flex items-center justify-between gap-3 mb-0.5">
+                      <h2 className="text-xl font-bold text-[#1E1A14]">{session.contact.name}</h2>
+                      {/* Sentiment indicator — shown once call is active */}
+                      {session.status === "active" && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                session.sentiment >= 0.7 ? "#22C55E"
+                                : session.sentiment >= 0.4 ? "#F59E0B"
+                                : "#EF4444",
+                              boxShadow:
+                                session.sentiment >= 0.7 ? "0 0 6px #22C55E88"
+                                : session.sentiment >= 0.4 ? "0 0 6px #F59E0B88"
+                                : "0 0 6px #EF444488",
+                            }}
+                          />
+                          <span
+                            className="text-[12px] font-semibold"
+                            style={{
+                              color:
+                                session.sentiment >= 0.7 ? "#16A34A"
+                                : session.sentiment >= 0.4 ? "#D97706"
+                                : "#DC2626",
+                            }}
+                          >
+                            {session.sentiment >= 0.7 ? "Positive" : session.sentiment >= 0.4 ? "Neutral" : "Negative"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[#7A746C] mb-3">
                       <span className="flex items-center gap-1">
                         <Phone size={11} /> {session.contact.phone}
@@ -396,65 +303,6 @@ export function LiveCallsPage() {
                 </div>
               </div>
 
-              {/* Sentiment + Engagement + NLU row */}
-              {session.status !== "dialing" && (
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Sentiment */}
-                  <div className="col-span-1 bg-white rounded-xl border border-[#E2DDD5] p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[12px] font-semibold text-[#7A746C]">Sentiment</span>
-                      <span className={`text-[12px] font-bold ${
-                        session.sentiment >= 0.7 ? "text-green-600"
-                        : session.sentiment >= 0.4 ? "text-amber-600"
-                        : "text-red-600"
-                      }`}>
-                        {Math.round(session.sentiment * 100)}% {session.sentiment >= 0.7 ? "Positive" : session.sentiment >= 0.4 ? "Neutral" : "Negative"}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-[#F0EDE8] rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${session.sentiment * 100}%`,
-                          backgroundColor: session.sentiment >= 0.7 ? "#22C55E" : session.sentiment >= 0.4 ? "#F59E0B" : "#EF4444",
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Engagement */}
-                  <div className="col-span-1 bg-white rounded-xl border border-[#E2DDD5] p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[12px] font-semibold text-[#7A746C]">Engagement</span>
-                      <span className="text-[12px] font-bold text-[#4F46E5]">
-                        {Math.round(session.engagement * 100)}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-[#F0EDE8] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#4F46E5] rounded-full transition-all duration-700"
-                        style={{ width: `${session.engagement * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* NLU Confidence + AI Speaking */}
-                  <div className="col-span-1 bg-white rounded-xl border border-[#E2DDD5] p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] text-[#9E9890] uppercase tracking-wider mb-1">
-                        {session.aiSpeaking ? "AI SPEAKING" : "LISTENING"}
-                      </div>
-                      <WaveformBars active={session.aiSpeaking && session.status === "active"} />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-[#1E1A14]">
-                        {Math.round(session.nluConfidence * 100)}%
-                      </div>
-                      <div className="text-[10px] text-[#9E9890]">NLU Confidence</div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Dialing state */}
               {session.status === "dialing" && (

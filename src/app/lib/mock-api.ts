@@ -190,10 +190,10 @@ export async function fetchSystemHealth(): Promise<SystemHealth> {
 export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
   await delay(200);
   return {
-    totalCallsToday: 1245,
-    overallCsat: 4.6,
-    avgLatencyMs: randomLatency(),
-    activeAgents: 12,
+    totalCalls: 1245,
+    activeCalls: 3,
+    connectedCalls: 89,
+    pendingFollowUps: 12,
   };
 }
 
