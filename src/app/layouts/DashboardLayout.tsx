@@ -224,10 +224,7 @@ export function DashboardLayout() {
                 <span className="mb-0.5 text-[10px] text-[#9E9890]">Active Calls</span>
                 <span className="text-lg font-bold leading-none text-[#1E1A14]">{health.activeCalls}</span>
               </div>
-              <div className="flex shrink-0 flex-col items-center">
-                <span className="mb-0.5 text-[10px] text-[#9E9890]">Avg Latency</span>
-                <span className="text-lg font-bold leading-none text-[#1E1A14]">{health.avgLatency} ms</span>
-              </div>
+
               <button
                 type="button"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E2DDD5] bg-white cursor-pointer"

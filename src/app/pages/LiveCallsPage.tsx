@@ -154,8 +154,8 @@ export function LiveCallsPage() {
 
     setSession(null);
 
-    // Navigate to monitoring to review the call results
-    navigate("/dashboard/monitoring");
+    // Navigate to analytics to review the call results
+    navigate("/dashboard/analytics");
   }, [session, navigate]);
 
   // Toggle mute

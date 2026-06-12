@@ -187,8 +187,23 @@ export async function fetchSystemHealth(): Promise<SystemHealth> {
   };
 }
 
-export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
+export async function fetchDashboardMetrics(agent?: string): Promise<DashboardMetrics> {
   await delay(200);
+  if (agent === "restaurant") {
+    return {
+      totalCalls: 840,
+      activeCalls: 2,
+      connectedCalls: 58,
+      pendingFollowUps: 4,
+    };
+  } else if (agent === "loan") {
+    return {
+      totalCalls: 405,
+      activeCalls: 1,
+      connectedCalls: 31,
+      pendingFollowUps: 8,
+    };
+  }
   return {
     totalCalls: 1245,
     activeCalls: 3,
@@ -328,13 +343,28 @@ export async function toggleActionItem(callId: string, itemId: string): Promise<
   if (item) item.done = !item.done;
 }
 
-export async function fetchAnalyticsMetrics() {
+export async function fetchAnalyticsMetrics(agent?: string) {
   await delay(150);
+  if (agent === "restaurant") {
+    return {
+      avgDuration: "02:48",
+      sentimentTrend: "+4.8%",
+      escalationCount: 0,
+      csatScore: 4.4,
+    };
+  } else if (agent === "loan") {
+    return {
+      avgDuration: "06:10",
+      sentimentTrend: "+3.0%",
+      escalationCount: 1,
+      csatScore: 3.3,
+    };
+  }
   return {
-    avgDuration: "03:24",
+    avgDuration: "03:56",
     sentimentTrend: "+4.2%",
-    escalationCount: 7,
-    csatScore: 4.3,
+    escalationCount: 1,
+    csatScore: 4.0,
   };
 }
 

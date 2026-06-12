@@ -41,7 +41,7 @@ export function DashboardPage() {
   const [selectedCall, setSelectedCall] = useState<ExtractedEntity | null>(null);
 
   const load = useCallback(() => {
-    getDashboardMetrics().then(setMetrics);
+    getDashboardMetrics(agent).then(setMetrics);
     getExtractedData(agent).then(setExtractedData);
   }, [agent]);
 

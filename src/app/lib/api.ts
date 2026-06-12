@@ -91,9 +91,9 @@ export async function loginUser(email: string, password: string) {
  * GET /dashboard/metrics
  * Returns: { totalCalls, activeCalls, connectedCalls, pendingFollowUps }
  */
-export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  if (USE_MOCK) return mock.fetchDashboardMetrics();
-  return apiFetch<DashboardMetrics>("/dashboard/metrics");
+export async function getDashboardMetrics(agent?: string): Promise<DashboardMetrics> {
+  if (USE_MOCK) return mock.fetchDashboardMetrics(agent);
+  return apiFetch<DashboardMetrics>(`/dashboard/metrics?agent=${agent}`);
 }
 
 /**
@@ -161,9 +161,9 @@ export async function getCallDetails(filters: Record<string, string>): Promise<C
  * GET /analytics/metrics
  * Returns: { avgDuration, sentimentTrend, escalationCount, csatScore }
  */
-export async function getAnalyticsMetrics(): Promise<AnalyticsMetrics> {
-  if (USE_MOCK) return mock.fetchAnalyticsMetrics();
-  return apiFetch<AnalyticsMetrics>("/analytics/metrics");
+export async function getAnalyticsMetrics(agent?: string): Promise<AnalyticsMetrics> {
+  if (USE_MOCK) return mock.fetchAnalyticsMetrics(agent);
+  return apiFetch<AnalyticsMetrics>(`/analytics/metrics?agent=${agent}`);
 }
 
 /**

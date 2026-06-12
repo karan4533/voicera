@@ -49,8 +49,8 @@ export function AnalyticsPage() {
   const [selectedCall, setSelectedCall] = useState<CallDetail | null>(null);
 
   useEffect(() => {
-    getAnalyticsMetrics().then(setMetrics);
-  }, []);
+    getAnalyticsMetrics(agent).then(setMetrics);
+  }, [agent]);
 
   useEffect(() => {
     setLoading(true);
