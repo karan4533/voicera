@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Search, Download, Calendar, Filter } from "lucide-react";
 import { getAnalyticsMetrics, getCallDetails, toggleCallActionItem } from "../lib/api";
 import type { CallDetail } from "../lib/types";
+import { useAgent } from "../context/AgentContext";
 
 import { PageHeader } from "../components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -37,9 +38,10 @@ export function AnalyticsPage() {
   const [calls, setCalls] = useState<CallDetail[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { agent, agentLabel } = useAgent();
+
   // Filters
   const [search, setSearch] = useState("");
-  const [agentFilter, setAgentFilter] = useState("all");
   const [languageFilter, setLanguageFilter] = useState("all");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
 
@@ -54,14 +56,14 @@ export function AnalyticsPage() {
     setLoading(true);
     getCallDetails({
       search,
-      agent: agentFilter,
+      agent,
       language: languageFilter,
       outcome: outcomeFilter,
     }).then((data) => {
       setCalls(data);
       setLoading(false);
     });
-  }, [search, agentFilter, languageFilter, outcomeFilter]);
+  }, [search, agent, languageFilter, outcomeFilter]);
 
   const handleToggleAction = async (callId: string, actionId: string) => {
     // Optimistic update
@@ -89,14 +91,13 @@ export function AnalyticsPage() {
     if (calls.length === 0) return;
     
     // Headers
-    const headers = ["Date", "Caller ID", "Name", "Agent", "Language", "Duration", "Outcome", "Sentiment", "Summary"];
+    const headers = ["Date", "Caller ID", "Name", "Language", "Duration", "Outcome", "Sentiment", "Summary"];
     
     // Rows
     const rows = calls.map(c => [
       c.date,
       c.callerId,
       c.name,
-      c.agent,
       c.language,
       c.duration,
       c.outcome,
@@ -130,7 +131,7 @@ export function AnalyticsPage() {
   return (
     <>
       <PageHeader 
-        title="Call Analytics" 
+        title={`${agentLabel} Analytics`}
         subtitle="Review transcripts, metrics, and follow-up actions for completed calls" 
       />
 
@@ -183,17 +184,6 @@ export function AnalyticsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          
-          <Select value={agentFilter} onValueChange={setAgentFilter}>
-            <SelectTrigger className="w-[140px] bg-white border-[#E2DDD5]">
-              <SelectValue placeholder="Agent" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Agents</SelectItem>
-              <SelectItem value="restaurant">Restaurant</SelectItem>
-              <SelectItem value="loan">Loan</SelectItem>
-            </SelectContent>
-          </Select>
 
           <Select value={languageFilter} onValueChange={setLanguageFilter}>
             <SelectTrigger className="w-[140px] bg-white border-[#E2DDD5]">
@@ -214,10 +204,18 @@ export function AnalyticsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Outcomes</SelectItem>
-              <SelectItem value="Order Placed">Order Placed</SelectItem>
-              <SelectItem value="Resolved">Resolved</SelectItem>
-              <SelectItem value="Payment Committed">Payment Committed</SelectItem>
-              <SelectItem value="Escalated">Escalated</SelectItem>
+              {agent === "restaurant" && (
+                <>
+                  <SelectItem value="Order Placed">Order Placed</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                </>
+              )}
+              {agent === "loan" && (
+                <>
+                  <SelectItem value="Payment Committed">Payment Committed</SelectItem>
+                  <SelectItem value="Escalated">Escalated</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -237,7 +235,6 @@ export function AnalyticsPage() {
             <TableRow className="border-[#E2DDD5] hover:bg-transparent">
               <TableHead className="font-semibold text-[#1E1A14]">Date</TableHead>
               <TableHead className="font-semibold text-[#1E1A14]">Caller</TableHead>
-              <TableHead className="font-semibold text-[#1E1A14]">Agent</TableHead>
               <TableHead className="font-semibold text-[#1E1A14]">Language</TableHead>
               <TableHead className="font-semibold text-[#1E1A14]">Duration</TableHead>
               <TableHead className="font-semibold text-[#1E1A14]">Outcome</TableHead>
@@ -247,7 +244,7 @@ export function AnalyticsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-[#7A746C]">Loading calls...</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center text-[#7A746C]">Loading calls...</TableCell>
               </TableRow>
             ) : calls.length === 0 ? (
               <TableRow>
@@ -263,12 +260,9 @@ export function AnalyticsPage() {
                   <TableCell className="text-[#7A746C] text-[13px]">{call.date}</TableCell>
                   <TableCell>
                     <div className="font-medium text-[#1E1A14]">{call.name}</div>
-                    <div className="text-xs text-[#7A746C]">{call.callerId}</div>
+                    <div className="text-[11px] font-mono text-[#7A746C]">{call.callerId}</div>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-normal text-[11px] bg-gray-50">{call.agent}</Badge>
-                  </TableCell>
-                  <TableCell className="text-[13px] text-[#1E1A14]">{call.language}</TableCell>
+                  <TableCell className="text-[#4A453E]">{call.language}</TableCell>
                   <TableCell className="text-[13px] text-[#7A746C]">{call.duration}</TableCell>
                   <TableCell>
                     <span className="text-[13px] font-medium text-[#1E1A14]">{call.outcome}</span>
