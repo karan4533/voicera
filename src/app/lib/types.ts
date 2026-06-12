@@ -187,6 +187,13 @@ export interface DashboardMetrics {
   activeAgents: number;
 }
 
+export interface AnalyticsMetrics {
+  avgDuration: string;
+  sentimentTrend: string;
+  escalationCount: number;
+  csatScore: number;
+}
+
 export interface ClientDomain {
   id: string;
   name: string;

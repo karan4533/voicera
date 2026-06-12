@@ -29,6 +29,7 @@ import type {
   AppSettings,
   SystemHealth,
   DashboardMetrics,
+  AnalyticsMetrics,
   ClientDomain,
   ExtractedEntity,
   ReminderContact,
@@ -160,9 +161,9 @@ export async function getCallDetails(filters: Record<string, string>): Promise<C
  * GET /analytics/metrics
  * Returns: { avgDuration, sentimentTrend, escalationCount, csatScore }
  */
-export async function getAnalyticsMetrics() {
+export async function getAnalyticsMetrics(): Promise<AnalyticsMetrics> {
   if (USE_MOCK) return mock.fetchAnalyticsMetrics();
-  return apiFetch("/analytics/metrics");
+  return apiFetch<AnalyticsMetrics>("/analytics/metrics");
 }
 
 /**

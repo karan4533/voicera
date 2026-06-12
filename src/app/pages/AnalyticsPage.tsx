@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Download, Calendar, Filter } from "lucide-react";
+import { Search, Download } from "lucide-react";
 import { getAnalyticsMetrics, getCallDetails, toggleCallActionItem } from "../lib/api";
 import type { CallDetail } from "../lib/types";
 import { useAgent } from "../context/AgentContext";
