@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
   Phone, PhoneOff, Mic, MicOff, Pause, Play, ArrowRightLeft,
-  MapPin, Briefcase, Building2, Clock, Users
+  MapPin, Briefcase, Clock, Users
 } from "lucide-react";
 import { getReminderContacts, updateReminderStatus } from "../lib/api";
 import { PAYMENT_SCRIPT } from "../lib/mock-api";
@@ -254,7 +254,6 @@ export function LiveCallsPage() {
   const pendingCount = queue.filter(c => c.status === "pending" || c.status === "no-answer").length;
   const filteredQueue = queue.filter(c => c.domain === agent);
   
-  const selectedContact = filteredQueue.find(c => c.id === selectedId);
   const completedCount = queue.filter(c => c.status === "completed").length;
   const conversionRate = queue.length > 0 ? Math.round((completedCount / queue.length) * 100) : 0;
 

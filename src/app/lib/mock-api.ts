@@ -12,7 +12,6 @@ import type {
   DashboardMetrics,
   ClientDomain,
   ExtractedEntity,
-  QueueContact,
   TranscriptTurn,
   ReminderContact,
   ReminderDomain,
