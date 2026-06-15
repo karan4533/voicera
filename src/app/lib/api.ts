@@ -74,10 +74,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
  */
 export async function loginUser(email: string, password: string) {
   if (USE_MOCK) {
-    // Bypass: create a local session without hitting any backend.
-    // auth.login() generates a mock JWT, stores it in sessionStorage, and returns
-    // the session object — AuthContext will pick it up immediately.
-    return getSession() ?? import("./auth").then(({ login }) => login(email, password, false));
+    // Firebase Authentication handles login in AuthContext — this function is
+    // no longer called for auth, but is kept for API-layer completeness.
+    return getSession();
   }
   return apiFetch("/auth/login", {
     method: "POST",

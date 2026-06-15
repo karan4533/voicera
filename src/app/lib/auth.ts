@@ -1,5 +1,16 @@
-const TOKEN_KEY = "vocera_jwt";
-const USER_KEY = "vocera_user";
+/**
+ * auth.ts — Shared auth types + synchronous session cache
+ *
+ * Types define the AuthSession shape used throughout the app
+ * (AuthContext, api.ts, ProtectedRoute). The mock implementation
+ * has been replaced by Firebase Authentication — see AuthContext.tsx
+ * and firebase.ts.
+ *
+ * getSession() / setCachedSession() give api.ts a synchronous snapshot
+ * of the current Firebase session. AuthContext keeps them in sync via
+ * the onIdTokenChanged listener (fires on sign-in, sign-out, and the
+ * automatic ~1 h token refresh).
+ */
 
 export interface AuthUser {
   email: string;
@@ -8,80 +19,23 @@ export interface AuthUser {
 }
 
 export interface AuthSession {
+  /** Firebase ID token — attached as Bearer by apiFetch() in api.ts */
   token: string;
   user: AuthUser;
+  /** Unix timestamp (ms) when the token expires */
   expiresAt: number;
 }
 
-function createMockJwt(email: string): string {
-  const payload = btoa(JSON.stringify({ sub: email, iat: Date.now(), exp: Date.now() + 86400000 }));
-  return `eyJhbGciOiJIUzI1NiJ9.${payload}.vocera-mock-signature`;
-}
+// ── Synchronous session cache ─────────────────────────────────────────────────
+// AuthContext calls setCachedSession() whenever Firebase auth state changes,
+// keeping this in sync. apiFetch() in api.ts reads it synchronously.
 
-function parseJwt(token: string): { exp?: number; sub?: string } | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    return JSON.parse(atob(parts[1]));
-  } catch {
-    return null;
-  }
-}
-
-export function login(email: string, password: string, rememberMe: boolean): AuthSession {
-  if (!email || !password) {
-    throw new Error("Email and password are required");
-  }
-
-  const session: AuthSession = {
-    token: createMockJwt(email),
-    user: {
-      email,
-      name: email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "Admin User",
-      role: "admin",
-    },
-    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-  };
-
-  const storage = rememberMe ? localStorage : sessionStorage;
-  storage.setItem(TOKEN_KEY, session.token);
-  storage.setItem(USER_KEY, JSON.stringify(session.user));
-  storage.setItem(`${TOKEN_KEY}_exp`, String(session.expiresAt));
-
-  return session;
-}
+let _session: AuthSession | null = null;
 
 export function getSession(): AuthSession | null {
-  const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
-  const token = storage.getItem(TOKEN_KEY);
-  const userRaw = storage.getItem(USER_KEY);
-  const expRaw = storage.getItem(`${TOKEN_KEY}_exp`);
-
-  if (!token || !userRaw) return null;
-
-  const payload = parseJwt(token);
-  const expiresAt = expRaw ? Number(expRaw) : payload?.exp ?? 0;
-
-  if (expiresAt && Date.now() > expiresAt) {
-    logout();
-    return null;
-  }
-
-  return {
-    token,
-    user: JSON.parse(userRaw) as AuthUser,
-    expiresAt,
-  };
+  return _session;
 }
 
-export function logout(): void {
-  [localStorage, sessionStorage].forEach((s) => {
-    s.removeItem(TOKEN_KEY);
-    s.removeItem(USER_KEY);
-    s.removeItem(`${TOKEN_KEY}_exp`);
-  });
-}
-
-export function isAuthenticated(): boolean {
-  return getSession() !== null;
+export function setCachedSession(session: AuthSession | null): void {
+  _session = session;
 }

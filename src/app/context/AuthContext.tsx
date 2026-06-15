@@ -1,48 +1,136 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import * as auth from "../lib/auth";
-import { loginUser } from "../lib/api";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from "react";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  GoogleAuthProvider,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  setPersistence,
+  onIdTokenChanged,
+  type User,
+} from "firebase/auth";
+import { auth as firebaseAuth } from "../lib/firebase";
+import { setCachedSession } from "../lib/auth";
+import type { AuthSession } from "../lib/auth";
+
+// ── Context shape ─────────────────────────────────────────────────────────────
+// Identical surface to the old mock context — all consumers are unchanged.
 
 interface AuthContextValue {
-  session: auth.AuthSession | null;
+  session: AuthSession | null;
+  /** true while Firebase resolves the initial auth state on cold load */
+  loading: boolean;
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  /** Kept synchronous at the call-site; Firebase signOut is fire-and-forget */
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<auth.AuthSession | null>(() => auth.getSession());
+// ── Helper — map Firebase User → AuthSession ──────────────────────────────────
 
-  // Re-validate session whenever the tab regains focus (handles token expiry while idle)
+async function buildSession(user: User): Promise<AuthSession> {
+  const token = await user.getIdToken();
+  return {
+    token,
+    user: {
+      email: user.email ?? "",
+      // Prefer the display name set by Google / email provider; fall back to
+      // capitalising the local part of the email address.
+      name:
+        user.displayName ??
+        (user.email
+          ? user.email
+              .split("@")[0]
+              .replace(/[._]/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase())
+          : "User"),
+      // Default to "admin" — use Firebase Custom Claims for role-based access
+      // in the future.
+      role: "admin",
+    },
+    // Firebase ID tokens are valid for 1 hour; onIdTokenChanged fires on
+    // automatic refresh so this cache stays current without any polling.
+    expiresAt: Date.now() + 60 * 60 * 1000,
+  };
+}
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<AuthSession | null>(null);
+  // Start as `true` — prevents ProtectedRoute from flashing a redirect to
+  // /login on page refresh before Firebase has resolved the persisted session.
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const handleFocus = () => {
-      const current = auth.getSession();
-      setSession(current);
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    // onIdTokenChanged is preferred over onAuthStateChanged because it fires
+    // on three events:
+    //   1. Initial load  — resolves the persisted session from IndexedDB
+    //   2. Sign-in / sign-out
+    //   3. Automatic token refresh (~every 55 min) — keeps getSession().token
+    //      fresh for apiFetch() in api.ts without any manual polling.
+    const unsubscribe = onIdTokenChanged(firebaseAuth, async (user) => {
+      if (user) {
+        const s = await buildSession(user);
+        setCachedSession(s);   // keep the synchronous cache in auth.ts in sync
+        setSession(s);
+      } else {
+        setCachedSession(null);
+        setSession(null);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    // Delegates to api.ts → mock-api.ts in dev, real backend in prod
-    await loginUser(email, password);
-    // Re-read session from storage (mock sets it directly; real backend should return a JWT)
-    const s = auth.getSession();
-    if (!s) throw new Error("Login succeeded but no session was created.");
-    setSession(s);
+  const login = useCallback(
+    async (email: string, password: string, rememberMe: boolean) => {
+      // Set storage persistence before signing in so the credential lands in
+      // the right storage tier:
+      //   rememberMe=true  → browserLocalPersistence  (survives browser close)
+      //   rememberMe=false → browserSessionPersistence (cleared on tab close)
+      await setPersistence(
+        firebaseAuth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+      await signInWithEmailAndPassword(firebaseAuth, email, password);
+      // onIdTokenChanged fires next and updates session state automatically.
+    },
+    []
+  );
+
+  const loginWithGoogle = useCallback(async () => {
+    // Google sign-in always uses local persistence so the session survives
+    // across browser restarts (consistent with typical OAuth UX).
+    await setPersistence(firebaseAuth, browserLocalPersistence);
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(firebaseAuth, provider);
+    // onIdTokenChanged fires next and updates session state automatically.
   }, []);
 
   const logout = useCallback(() => {
-    auth.logout();
-    setSession(null);
+    // fire-and-forget — onIdTokenChanged fires with null and clears state
+    signOut(firebaseAuth);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, login, logout }}>
+    <AuthContext.Provider value={{ session, loading, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useAuth() {
   const ctx = useContext(AuthContext);

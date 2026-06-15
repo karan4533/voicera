@@ -12,7 +12,10 @@ import { useAuth } from "./context/AuthContext";
 
 /** Redirects already-authenticated users away from the login page. */
 function GuestRoute({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
+  // Wait for Firebase to resolve the persisted session before deciding whether
+  // to redirect — avoids a flash of the login screen for already-signed-in users.
+  if (loading) return null;
   if (session) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
