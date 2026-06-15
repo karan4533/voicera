@@ -168,8 +168,8 @@ export function DashboardLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-[#E2DDD5] bg-white px-4 py-2.5 sm:px-6 lg:h-14 lg:py-0">
-          <div className="flex flex-col gap-2.5 lg:h-14 lg:flex-row lg:items-center lg:justify-between">
+        <header className="shrink-0 border-b border-[#E2DDD5] bg-white px-4 h-14 sm:px-6">
+          <div className="flex items-center justify-between w-full h-14">
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
@@ -181,11 +181,11 @@ export function DashboardLayout() {
               </button>
               <div className="relative" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-[#7A746C]">Agent:</span>
+                  <span className="text-[13px] font-medium text-[#7A746C] hidden sm:inline">Agent:</span>
                   <button
                     type="button"
                     onClick={() => setAgentOpen(!agentOpen)}
-                    className="flex max-w-[180px] items-center gap-1.5 rounded-md border border-[#E2DDD5] bg-[#F9F9F7] px-2.5 py-1.5 text-[13px] font-medium text-[#1E1A14] cursor-pointer sm:max-w-none"
+                    className="flex max-w-[130px] items-center gap-1.5 rounded-md border border-[#E2DDD5] bg-[#F9F9F7] px-2.5 py-1.5 text-[13px] font-medium text-[#1E1A14] cursor-pointer sm:max-w-none"
                   >
                     <span className="truncate">{agentLabel}</span>
                     <ChevronDown size={14} className="shrink-0 text-[#7A746C]" />
@@ -210,19 +210,20 @@ export function DashboardLayout() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4 sm:justify-end sm:gap-6">
-              <div className="flex shrink-0 flex-col items-center">
-                <span className="mb-0.5 text-[10px] text-[#9E9890]">System Health</span>
-                <div className="flex items-center gap-1.5">
-                  <div className={`h-[7px] w-[7px] rounded-full ${health.status === "healthy" ? "bg-[#22C55E]" : "bg-[#F59E0B]"}`} />
-                  <span className="text-[13px] font-semibold text-[#1E1A14]">
-                    {health.status === "healthy" ? "Healthy" : "Degraded"}
-                  </span>
-                </div>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-1.5">
+                <div className={`h-2 w-2 rounded-full ${health.status === "healthy" ? "bg-[#22C55E]" : "bg-[#F59E0B]"}`} />
+                <span className="text-[13px] font-semibold text-[#1E1A14] hidden sm:inline">
+                  {health.status === "healthy" ? "System Healthy" : "Degraded"}
+                </span>
+                <span className="text-[13px] font-semibold text-[#1E1A14] sm:hidden">
+                  System
+                </span>
               </div>
-              <div className="flex shrink-0 flex-col items-center">
-                <span className="mb-0.5 text-[10px] text-[#9E9890]">Active Calls</span>
-                <span className="text-lg font-bold leading-none text-[#1E1A14]">{health.activeCalls}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold text-[#1E1A14] bg-[#FDF3E3] text-[#C8872A] px-2.5 py-0.5 rounded-full">
+                  {health.activeCalls} Active
+                </span>
               </div>
 
               <button
