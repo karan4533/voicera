@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import { getFriendlyAuthErrorMessage } from "../lib/authErrors";
 import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
 // ── Google wordmark SVG (official brand colours) ───────────────────────────────
@@ -37,7 +38,7 @@ export function LoginScreen() {
       await login(email.trim(), password, rememberMe);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      setError(getFriendlyAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -50,7 +51,7 @@ export function LoginScreen() {
       await loginWithGoogle();
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+      setError(getFriendlyAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
