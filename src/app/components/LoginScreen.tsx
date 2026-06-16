@@ -16,26 +16,43 @@ function GoogleIcon() {
     </svg>
   );
 }
-
 export function LoginScreen() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
 
+  const [mode, setMode] = useState<"login" | "forgot">("login");
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
+  
+  // Prefill email and check rememberMe from localStorage on initialization
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem("remembered_email") || "";
+  });
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    return !!localStorage.getItem("remembered_email");
+  });
+  
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
     if (!email.trim()) { setError("Email is required."); return; }
     if (!password) { setError("Password is required."); return; }
     setLoading(true);
     try {
       await login(email.trim(), password, rememberMe);
+      
+      // Store or remove email based on rememberMe checkbox
+      if (rememberMe) {
+        localStorage.setItem("remembered_email", email.trim());
+      } else {
+        localStorage.removeItem("remembered_email");
+      }
+      
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(getFriendlyAuthErrorMessage(err));
@@ -44,8 +61,31 @@ export function LoginScreen() {
     }
   };
 
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccessMessage("");
+    if (!email.trim()) { setError("Email is required."); return; }
+    setLoading(true);
+    try {
+      await resetPassword(email.trim());
+      setSuccessMessage("If that email address is registered, we have sent a password reset link to it. Please check your inbox.");
+    } catch (err) {
+      // Security: If user not found, display the exact same success message
+      // to prevent email enumeration (harvesting user emails).
+      if (err && typeof err === "object" && "code" in err && err.code === "auth/user-not-found") {
+        setSuccessMessage("If that email address is registered, we have sent a password reset link to it. Please check your inbox.");
+      } else {
+        setError(getFriendlyAuthErrorMessage(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setError("");
+    setSuccessMessage("");
     setLoading(true);
     try {
       await loginWithGoogle();
@@ -55,9 +95,7 @@ export function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  return (
+  };  return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row lg:overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Left Panel */}
       <div
@@ -197,7 +235,7 @@ export function LoginScreen() {
               margin: "0 0 6px",
             }}
           >
-            Login to your account
+            {mode === "login" ? "Login to your account" : "Reset your password"}
           </h2>
           <p
             style={{
@@ -208,49 +246,58 @@ export function LoginScreen() {
               margin: "0 0 28px",
             }}
           >
-            Enter your credentials to access the platform
+            {mode === "login"
+              ? "Enter your credentials to access the platform"
+              : "Enter your email address and we'll send you a recovery link"}
           </p>
 
-          {/* ── Google sign-in ─────────────────────────────────────── */}
-          <button
-            id="google-login"
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            style={{
-              width: "100%",
-              height: 44,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              border: "1.5px solid #E2DDD5",
-              borderRadius: 8,
-              background: "#fff",
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 500,
-              fontSize: 14,
-              color: "#1E1A14",
-              cursor: loading ? "not-allowed" : "pointer",
-              transition: "border-color 0.15s, background 0.15s",
-              opacity: loading ? 0.6 : 1,
-              marginBottom: 4,
-            }}
-            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.borderColor = "#C8872A"; }}
-            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.borderColor = "#E2DDD5"; }}
+          {/* ── Google sign-in (Login mode only) ─────────────────────────────── */}
+          {mode === "login" && (
+            <>
+              <button
+                id="google-login"
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  height: 44,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  border: "1.5px solid #E2DDD5",
+                  borderRadius: 8,
+                  background: "#fff",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#1E1A14",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  transition: "border-color 0.15s, background 0.15s",
+                  opacity: loading ? 0.6 : 1,
+                  marginBottom: 4,
+                }}
+                onMouseEnter={(e) => { if (!loading) e.currentTarget.style.borderColor = "#C8872A"; }}
+                onMouseLeave={(e) => { if (!loading) e.currentTarget.style.borderColor = "#E2DDD5"; }}
+              >
+                <GoogleIcon />
+                Continue with Google
+              </button>
+
+              {/* ── Divider ───────────────────────────────────────────── */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0" }}>
+                <div style={{ flex: 1, height: 1, backgroundColor: "#E2DDD5" }} />
+                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: "#9E9890" }}>or continue with email</span>
+                <div style={{ flex: 1, height: 1, backgroundColor: "#E2DDD5" }} />
+              </div>
+            </>
+          )}
+
+          <form
+            onSubmit={mode === "login" ? handleSubmit : handleForgotPasswordSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: 18 }}
           >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-
-          {/* ── Divider ───────────────────────────────────────────── */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0" }}>
-            <div style={{ flex: 1, height: 1, backgroundColor: "#E2DDD5" }} />
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: "#9E9890" }}>or continue with email</span>
-            <div style={{ flex: 1, height: 1, backgroundColor: "#E2DDD5" }} />
-          </div>
-
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {/* Error banner */}
             {error && (
               <div
@@ -265,6 +312,23 @@ export function LoginScreen() {
                 }}
               >
                 {error}
+              </div>
+            )}
+
+            {/* Success banner */}
+            {successMessage && (
+              <div
+                role="alert"
+                style={{
+                  backgroundColor: "#ECFDF5",
+                  border: "1px solid #A7F3D0",
+                  borderRadius: 8,
+                  padding: "10px 14px",
+                  fontSize: 13,
+                  color: "#059669",
+                }}
+              >
+                {successMessage}
               </div>
             )}
 
@@ -309,120 +373,152 @@ export function LoginScreen() {
               />
             </div>
 
-            {/* Password field */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label
-                htmlFor="password"
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 500,
-                  fontSize: 13,
-                  color: "#1E1A14",
-                }}
-              >
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  disabled={loading}
+            {/* Password field (Login mode only) */}
+            {mode === "login" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label
+                  htmlFor="password"
                   style={{
-                    height: 40,
-                    border: "1.5px solid #E2DDD5",
-                    borderRadius: 8,
-                    padding: "0 40px 0 12px",
                     fontFamily: "Inter, sans-serif",
+                    fontWeight: 500,
                     fontSize: 13,
                     color: "#1E1A14",
-                    outline: "none",
-                    width: "100%",
-                    boxSizing: "border-box",
-                    backgroundColor: "#fff",
-                    transition: "border-color 0.15s",
-                    opacity: loading ? 0.6 : 1,
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = "#C8872A")}
-                  onBlur={(e) => (e.target.style.borderColor = "#E2DDD5")}
-                />
+                >
+                  Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    disabled={loading}
+                    style={{
+                      height: 40,
+                      border: "1.5px solid #E2DDD5",
+                      borderRadius: 8,
+                      padding: "0 40px 0 12px",
+                      fontFamily: "Inter, sans-serif",
+                      fontSize: 13,
+                      color: "#1E1A14",
+                      outline: "none",
+                      width: "100%",
+                      boxSizing: "border-box",
+                      backgroundColor: "#fff",
+                      transition: "border-color 0.15s",
+                      opacity: loading ? 0.6 : 1,
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = "#C8872A")}
+                    onBlur={(e) => (e.target.style.borderColor = "#E2DDD5")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#9E9890",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Remember me + Forgot password (Login mode only) */}
+            {mode === "login" ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{
+                      width: 14,
+                      height: 14,
+                      accentColor: "#C8872A",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "Inter, sans-serif",
+                      fontSize: 13,
+                      color: "#1E1A14",
+                    }}
+                  >
+                    Remember me
+                  </span>
+                </label>
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => {
+                    setMode("forgot");
+                    setError("");
+                    setSuccessMessage("");
+                  }}
                   style={{
-                    position: "absolute",
-                    right: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "#9E9890",
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: 500,
+                    fontSize: 13,
+                    color: "#C8872A",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     padding: 0,
-                    display: "flex",
-                    alignItems: "center",
                   }}
                 >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  Forgot password?
                 </button>
               </div>
-            </div>
-
-            {/* Remember me + Forgot password */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    accentColor: "#C8872A",
-                    cursor: "pointer",
+            ) : (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("login");
+                    setError("");
+                    setSuccessMessage("");
                   }}
-                />
-                <span
                   style={{
                     fontFamily: "Inter, sans-serif",
+                    fontWeight: 500,
                     fontSize: 13,
-                    color: "#1E1A14",
+                    color: "#C8872A",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
                   }}
                 >
-                  Remember me
-                </span>
-              </label>
-              <button
-                type="button"
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 500,
-                  fontSize: 13,
-                  color: "#C8872A",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              >
-                Forgot password?
-              </button>
-            </div>
+                  Back to login
+                </button>
+              </div>
+            )}
 
-            {/* Login button */}
+            {/* Submit button */}
             <button
-              id="login-submit"
+              id={mode === "login" ? "login-submit" : "forgot-submit"}
               type="submit"
               disabled={loading}
               style={{
@@ -442,7 +538,9 @@ export function LoginScreen() {
               onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#B57622"; }}
               onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#C8872A"; }}
             >
-              {loading ? "Signing in…" : "Login"}
+              {loading
+                ? (mode === "login" ? "Signing in…" : "Sending link…")
+                : (mode === "login" ? "Login" : "Send Reset Link")}
             </button>
           </form>
 

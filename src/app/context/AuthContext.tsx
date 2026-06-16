@@ -15,6 +15,7 @@ import {
   browserSessionPersistence,
   setPersistence,
   onIdTokenChanged,
+  sendPasswordResetEmail,
   type User,
 } from "firebase/auth";
 import { auth as firebaseAuth } from "../lib/firebase";
@@ -30,6 +31,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   /** Kept synchronous at the call-site; Firebase signOut is fire-and-forget */
   logout: () => void;
 }
@@ -118,13 +120,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // onIdTokenChanged fires next and updates session state automatically.
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    await sendPasswordResetEmail(firebaseAuth, email);
+  }, []);
+
   const logout = useCallback(() => {
     // fire-and-forget — onIdTokenChanged fires with null and clears state
     signOut(firebaseAuth);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, loading, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ session, loading, login, loginWithGoogle, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
