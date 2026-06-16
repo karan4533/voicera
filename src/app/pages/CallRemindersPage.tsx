@@ -256,7 +256,7 @@ export function CallRemindersPage() {
         </div>
 
         {/* ── Stats strip ── */}
-        <div className="grid grid-cols-4 gap-3 mb-5 shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 shrink-0">
           {[
             { label: "Total",     value: total,     color: "#1E1A14" },
             { label: "Pending",   value: pending,   color: "#D97706" },
@@ -417,7 +417,7 @@ export function CallRemindersPage() {
           DETAIL SIDE PANEL
       ══════════════════════════════════════════════════════════════ */}
       {detailContact && (
-        <div className="fixed right-0 top-0 h-full w-[380px] bg-white border-l border-[#E2DDD5] shadow-xl flex flex-col z-30 overflow-hidden">
+        <div className="fixed right-0 top-0 h-full w-full sm:w-[380px] max-w-[100vw] bg-white border-l border-[#E2DDD5] shadow-xl flex flex-col z-30 overflow-hidden">
           {/* Panel header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] shrink-0 bg-[#FDFDFD]">
             <div>
@@ -576,7 +576,7 @@ export function CallRemindersPage() {
       {drawerOpen && (
         <div className="fixed inset-0 z-40 flex">
           <div className="flex-1 bg-black/30" onClick={() => setDrawerOpen(false)} />
-          <div className="w-[460px] bg-white shadow-2xl flex flex-col h-full overflow-hidden">
+          <div className="w-full sm:w-[460px] max-w-[100vw] bg-white shadow-2xl flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0">
               <div>
                 <div className="font-bold text-[15px] text-[#1E1A14]">Add Customer</div>
@@ -681,8 +681,8 @@ export function CallRemindersPage() {
           CSV IMPORT MODAL
       ══════════════════════════════════════════════════════════════ */}
       {importOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl w-[560px] max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full sm:w-[560px] max-w-[100vw] max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0">
               <div>
                 <div className="font-bold text-[15px] text-[#1E1A14]">Bulk Import via CSV</div>

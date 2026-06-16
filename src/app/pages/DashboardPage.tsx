@@ -152,7 +152,7 @@ export function DashboardPage() {
 
       {/* Slide-out Panel */}
       {selectedCall !== null && (
-        <div className="fixed right-0 top-0 h-full w-[400px] bg-white border-l border-[#E2DDD5] shadow-2xl flex flex-col z-50 overflow-hidden">
+        <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] max-w-[100vw] bg-white border-l border-[#E2DDD5] shadow-2xl flex flex-col z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] shrink-0 bg-[#FDFDFD]">
             <div>
