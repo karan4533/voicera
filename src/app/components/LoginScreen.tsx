@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { Eye, EyeOff, Shield, Mail } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { getFriendlyAuthErrorMessage } from "../lib/authErrors";
@@ -20,7 +20,7 @@ export function LoginScreen() {
   const { login, loginWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "forgot" | "forgot-success">("login");
   const [showPassword, setShowPassword] = useState(false);
   
   // Prefill email and check rememberMe from localStorage on initialization
@@ -69,12 +69,12 @@ export function LoginScreen() {
     setLoading(true);
     try {
       await resetPassword(email.trim());
-      setSuccessMessage("If that email address is registered, we have sent a password reset link to it. Please check your inbox.");
+      setMode("forgot-success");
     } catch (err) {
       // Security: If user not found, display the exact same success message
       // to prevent email enumeration (harvesting user emails).
       if (err && typeof err === "object" && "code" in err && err.code === "auth/user-not-found") {
-        setSuccessMessage("If that email address is registered, we have sent a password reset link to it. Please check your inbox.");
+        setMode("forgot-success");
       } else {
         setError(getFriendlyAuthErrorMessage(err));
       }
@@ -226,6 +226,88 @@ export function LoginScreen() {
         </div>
 
         <div className="w-full max-w-[380px] px-4 sm:px-8 lg:px-8">
+          {mode === "forgot-success" ? (
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#ECFDF5]">
+                <Mail size={32} className="text-[#059669]" />
+              </div>
+              <h2
+                style={{
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  fontWeight: 700,
+                  fontSize: 26,
+                  color: "#1E1A14",
+                  margin: "0 0 12px",
+                }}
+              >
+                Check your email
+              </h2>
+              <p
+                style={{
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 400,
+                  fontSize: 14,
+                  color: "#7A746C",
+                  lineHeight: 1.5,
+                  margin: "0 0 24px",
+                }}
+              >
+                We sent a password reset link to <br />
+                <strong style={{ color: "#1E1A14", fontWeight: 600 }}>{email}</strong>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("login");
+                  setEmail("");
+                  setPassword("");
+                }}
+                style={{
+                  width: "100%",
+                  height: 44,
+                  backgroundColor: "#C8872A",
+                  borderRadius: 8,
+                  border: "none",
+                  color: "#fff",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 15,
+                  cursor: "pointer",
+                  transition: "background-color 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#B57622"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#C8872A"; }}
+              >
+                Back to log in
+              </button>
+              <p
+                style={{
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 13,
+                  color: "#7A746C",
+                  marginTop: 24,
+                }}
+              >
+                Didn't receive the email?{" "}
+                <button
+                  onClick={() => {
+                    setMode("forgot");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "#C8872A",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Click to resend
+                </button>
+              </p>
+            </div>
+          ) : (
+            <>
           <h2
             style={{
               fontFamily: "Georgia, 'Times New Roman', serif",
@@ -543,6 +625,8 @@ export function LoginScreen() {
                 : (mode === "login" ? "Login" : "Send Reset Link")}
             </button>
           </form>
+          </>
+          )}
 
           {/* Footer note */}
           <div
