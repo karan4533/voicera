@@ -5,7 +5,7 @@ const AGENT_KEY = "vocera_selected_agent";
 
 export const AGENTS = [
   { id: "restaurant" as AgentType, label: "Restaurant Ordering" },
-  { id: "loan" as AgentType, label: "Loan Follow-up" },
+  { id: "loan" as AgentType, label: "AI Feedback" },
 ];
 
 interface AgentContextValue {

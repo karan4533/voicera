@@ -19,7 +19,7 @@ import { useAgent } from "../context/AgentContext";
 
 const DOMAIN_LABELS: Record<ReminderDomain, string> = {
   restaurant: "Restaurant",
-  loan: "Loan Services",
+  loan: "AI Feedback",
 };
 
 const DOMAIN_COLORS: Record<ReminderDomain, string> = {

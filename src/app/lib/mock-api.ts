@@ -93,7 +93,7 @@ let activeCalls: ActiveCall[] = [
 let completedCalls: CompletedCall[] = [
   { id: "c1", callerId: "+91 90123 45678", name: "Suresh Patel", duration: "03:42", agent: "Restaurant", language: "Gujarati", outcome: "Order Placed", completedAt: "10 min ago" },
   { id: "c2", callerId: "+91 88990 11223", name: "Lakshmi N", duration: "01:55", agent: "Restaurant", language: "Tamil", outcome: "Resolved", completedAt: "25 min ago" },
-  { id: "c3", callerId: "+91 77665 44332", name: "Amit Singh", duration: "06:10", agent: "Loan", language: "Hindi", outcome: "Payment Committed", completedAt: "1 hr ago" },
+  { id: "c3", callerId: "+91 77665 44332", name: "Amit Singh", duration: "06:10", agent: "AI Feedback", language: "Hindi", outcome: "Payment Committed", completedAt: "1 hr ago" },
 ];
 
 const callDetails: Record<string, CallDetail> = {
@@ -115,7 +115,7 @@ const callDetails: Record<string, CallDetail> = {
     actionItems: [{ id: "a3", text: "No follow-up required", done: true }],
   },
   c3: {
-    id: "c3", callerId: "+91 77665 44332", name: "Amit Singh", duration: "06:10", agent: "Loan", language: "Hindi", outcome: "Payment Committed", date: "2026-06-09 13:42",
+    id: "c3", callerId: "+91 77665 44332", name: "Amit Singh", duration: "06:10", agent: "AI Feedback", language: "Hindi", outcome: "Payment Committed", date: "2026-06-09 13:42",
     sentiment: 0.65,
     summary: "Customer committed to pay ₹12,500 by Friday. Escalation avoided after payment plan discussion.",
     transcript: "Agent: This is regarding your overdue payment...\nCustomer: I can pay by Friday...\nAgent: Noted. Sending payment link via SMS.",
@@ -217,8 +217,8 @@ export async function fetchClientDomains(): Promise<ClientDomain[]> {
   return [
     {
       id: "banking",
-      name: "Payment Follow-up",
-      description: "Loan collections, EMI reminders, and payment tracking",
+      name: "AI Feedback",
+      description: "Customer feedback, surveys, and evaluation tracking",
       icon: "Building",
       status: "active",
     },
@@ -320,7 +320,14 @@ export async function fetchCallDetails(filters?: {
   await delay(200);
   let results = Object.values(callDetails);
   if (filters?.agent && filters.agent !== "all") {
-    results = results.filter((c) => c.agent.toLowerCase().includes(filters.agent!.toLowerCase()));
+    results = results.filter((c) => {
+      const filterAgent = filters.agent!.toLowerCase();
+      const callAgent = c.agent.toLowerCase();
+      if (filterAgent === "loan") {
+        return callAgent.includes("loan") || callAgent.includes("feedback");
+      }
+      return callAgent.includes(filterAgent);
+    });
   }
   if (filters?.language && filters.language !== "all") {
     results = results.filter((c) => c.language === filters.language);
