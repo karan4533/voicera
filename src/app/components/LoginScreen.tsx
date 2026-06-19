@@ -5,7 +5,16 @@ import { useAuth } from "../context/AuthContext";
 import { getFriendlyAuthErrorMessage } from "../lib/authErrors";
 import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
-// ── Google wordmark SVG (official brand colours) ───────────────────────────────
+// ── Brand tokens ───────────────────────────────────────────────────────────────
+const ACCENT   = "#50381F";
+const ACCENT_H = "#3D2914";
+const BG       = "#F7F4EF";
+const SURFACE  = "#ECE6D9";
+const TEXT     = "#1E1A16";
+const MUTED    = "#7A746C";
+const BORDER   = "#D6CFC4";
+
+// ── Google icon ────────────────────────────────────────────────────────────────
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -16,43 +25,30 @@ function GoogleIcon() {
     </svg>
   );
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export function LoginScreen() {
   const { login, loginWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<"login" | "forgot" | "forgot-success">("login");
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Prefill email and check rememberMe from localStorage on initialization
-  const [email, setEmail] = useState(() => {
-    return localStorage.getItem("remembered_email") || "";
-  });
+  const [email, setEmail] = useState(() => localStorage.getItem("remembered_email") || "");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(() => {
-    return !!localStorage.getItem("remembered_email");
-  });
-  
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem("remembered_email"));
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccessMessage("");
     if (!email.trim()) { setError("Email is required."); return; }
-    if (!password) { setError("Password is required."); return; }
+    if (!password)     { setError("Password is required."); return; }
     setLoading(true);
     try {
       await login(email.trim(), password, rememberMe);
-      
-      // Store or remove email based on rememberMe checkbox
-      if (rememberMe) {
-        localStorage.setItem("remembered_email", email.trim());
-      } else {
-        localStorage.removeItem("remembered_email");
-      }
-      
+      if (rememberMe) localStorage.setItem("remembered_email", email.trim());
+      else localStorage.removeItem("remembered_email");
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(getFriendlyAuthErrorMessage(err));
@@ -61,18 +57,15 @@ export function LoginScreen() {
     }
   };
 
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccessMessage("");
     if (!email.trim()) { setError("Email is required."); return; }
     setLoading(true);
     try {
       await resetPassword(email.trim());
       setMode("forgot-success");
     } catch (err) {
-      // Security: If user not found, display the exact same success message
-      // to prevent email enumeration (harvesting user emails).
       if (err && typeof err === "object" && "code" in err && err.code === "auth/user-not-found") {
         setMode("forgot-success");
       } else {
@@ -83,9 +76,8 @@ export function LoginScreen() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogle = async () => {
     setError("");
-    setSuccessMessage("");
     setLoading(true);
     try {
       await loginWithGoogle();
@@ -95,560 +87,209 @@ export function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };  return (
-    <div className="flex min-h-screen w-full flex-col lg:flex-row lg:overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
-      {/* Left Panel */}
+  };
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: "Inter, sans-serif", backgroundColor: BG }}>
+
+      {/* ── Left Panel ──────────────────────────────────────────────────────── */}
       <div
-        className="relative hidden lg:flex flex-col overflow-hidden shrink-0"
-        style={{ width: "42%", minWidth: 420, backgroundColor: "#B8946A" }}
+        className="hidden lg:flex flex-col relative overflow-hidden shrink-0"
+        style={{ width: "42%", minWidth: 400, backgroundColor: ACCENT }}
       >
-        {/* Logo top-left */}
-        <div className="flex items-center gap-3 px-8 pt-8">
-          <img
-            src={heuristicLabsLogo}
-            alt="Heuristic Labs"
-            style={{
-              width: 44,
-              height: 44,
-              objectFit: "contain",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 700,
-              fontSize: 18,
-              color: "#1E1A14",
-              letterSpacing: "-0.02em",
-            }}
-          >
+        {/* Subtle texture overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 60%)" }} />
+
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "32px 40px" }}>
+          <img src={heuristicLabsLogo} alt="Heuristic Labs" style={{ width: 36, height: 36, objectFit: "contain" }} />
+          <span style={{ fontWeight: 600, fontSize: 16, color: "rgba(255,255,255,0.9)", letterSpacing: "-0.01em" }}>
             Heuristic Labs
           </span>
         </div>
 
         {/* Center content */}
-        <div className="flex flex-1 flex-col justify-center px-12 pb-20 relative z-10">
-          <div className="mb-2 flex items-center gap-3">
-            <div className="h-[2px] w-8 bg-[#1E1A14] opacity-20 rounded-full" />
-            <p
-              style={{
-                fontFamily: "Inter, sans-serif",
-                fontWeight: 700,
-                fontSize: 13,
-                color: "rgba(30, 26, 20, 0.65)",
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                margin: 0,
-              }}
-            >
-              Welcome to
-            </p>
-          </div>
-          <h1
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 900,
-              fontSize: 88,
-              color: "#FFFFFF",
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-              margin: "0 0 16px",
-              textShadow: "0px 8px 32px rgba(0,0,0,0.08)",
-            }}
-          >
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 48px 80px", position: "relative", zIndex: 1 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            Welcome to
+          </p>
+          <h1 style={{ margin: "0 0 16px", fontSize: 76, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.04em", lineHeight: 1.05 }}>
             Voicera
           </h1>
-          <p
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 500,
-              fontSize: 19,
-              color: "rgba(30, 26, 20, 0.75)",
-              maxWidth: 320,
-              lineHeight: 1.45,
-              margin: 0,
-            }}
-          >
-            AI Voice Platform for Smarter Conversations
+          <p style={{ margin: 0, fontSize: 17, fontWeight: 400, color: "rgba(255,255,255,0.65)", maxWidth: 300, lineHeight: 1.55 }}>
+            AI Voice Platform for smarter inbound and outbound conversations — built for enterprise teams.
           </p>
+
+
         </div>
 
-        {/* Decorative wave */}
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-          <svg
-            viewBox="0 0 600 900"
-            preserveAspectRatio="xMidYMid slice"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ width: "100%", height: "100%", display: "block" }}
-          >
-            <circle cx="68"  cy="74"  r="1.4" fill="#FFFFFF" fillOpacity="0.15" />
-            <circle cx="448" cy="58"  r="1.0" fill="#FFFFFF" fillOpacity="0.10" />
-            <circle cx="522" cy="148" r="1.6" fill="#FFFFFF" fillOpacity="0.12" />
-            <circle cx="182" cy="218" r="1.1" fill="#FFFFFF" fillOpacity="0.15" />
-            <circle cx="376" cy="305" r="1.2" fill="#FFFFFF" fillOpacity="0.10" />
-            <circle cx="58"  cy="428" r="1.3" fill="#FFFFFF" fillOpacity="0.12" />
-            <circle cx="487" cy="386" r="1.0" fill="#FFFFFF" fillOpacity="0.10" />
-            <circle cx="268" cy="516" r="1.5" fill="#FFFFFF" fillOpacity="0.12" />
-            <circle cx="138" cy="604" r="1.0" fill="#FFFFFF" fillOpacity="0.15" />
-            <circle cx="558" cy="572" r="1.2" fill="#FFFFFF" fillOpacity="0.10" />
-            <circle cx="334" cy="648" r="0.9" fill="#FFFFFF" fillOpacity="0.12" />
-
-            <path d="M-20 786 C 110 756, 225 660, 308 672 C 396 685, 506 758, 640 788" stroke="#FFFFFF" strokeWidth="0.7" strokeOpacity="0.08" fill="none" strokeLinecap="round" />
-            <path d="M-20 793 C 110 763, 225 667, 308 679 C 396 692, 506 765, 640 795" stroke="#FFFFFF" strokeWidth="0.8" strokeOpacity="0.10" fill="none" strokeLinecap="round" />
-            <path d="M-20 800 C 110 770, 225 674, 308 686 C 396 699, 506 772, 640 802" stroke="#FFFFFF" strokeWidth="0.9" strokeOpacity="0.12" fill="none" strokeLinecap="round" />
-            <path d="M-20 807 C 110 777, 225 681, 308 693 C 396 706, 506 779, 640 809" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
-            <path d="M-20 813 C 110 783, 225 687, 308 699 C 396 712, 506 785, 640 815" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
-            <path d="M-20 819 C 110 789, 225 693, 308 705 C 396 718, 506 791, 640 821" stroke="#FFFFFF" strokeWidth="1.1" strokeOpacity="0.16" fill="none" strokeLinecap="round" />
-            <path d="M-20 825 C 110 795, 225 699, 308 711 C 396 724, 506 797, 640 827" stroke="#FFFFFF" strokeWidth="1.1" strokeOpacity="0.16" fill="none" strokeLinecap="round" />
-            <path d="M-20 831 C 110 801, 225 705, 308 717 C 396 730, 506 803, 640 833" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
-            <path d="M-20 838 C 110 808, 225 712, 308 724 C 396 737, 506 810, 640 840" stroke="#FFFFFF" strokeWidth="1.0" strokeOpacity="0.14" fill="none" strokeLinecap="round" />
-            <path d="M-20 845 C 110 815, 225 719, 308 731 C 396 744, 506 817, 640 847" stroke="#FFFFFF" strokeWidth="0.9" strokeOpacity="0.12" fill="none" strokeLinecap="round" />
-            <path d="M-20 852 C 110 822, 225 726, 308 738 C 396 751, 506 824, 640 854" stroke="#FFFFFF" strokeWidth="0.8" strokeOpacity="0.10" fill="none" strokeLinecap="round" />
-            <path d="M-20 859 C 110 829, 225 733, 308 745 C 396 758, 506 831, 640 861" stroke="#FFFFFF" strokeWidth="0.7" strokeOpacity="0.08" fill="none" strokeLinecap="round" />
+        {/* Bottom decorative lines */}
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+          <svg viewBox="0 0 500 120" fill="none" style={{ width: "100%", display: "block" }}>
+            {[1, 1.5, 2, 1.5, 1].map((w, i) => (
+              <path
+                key={i}
+                d={`M-10 ${90 + i * 7} C 120 ${80 + i * 7}, 240 ${60 + i * 7}, 320 ${72 + i * 7} C 400 ${84 + i * 7}, 450 ${90 + i * 7}, 520 ${88 + i * 7}`}
+                stroke="white" strokeWidth={w} strokeOpacity={0.06 + i * 0.02} strokeLinecap="round"
+              />
+            ))}
           </svg>
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-white px-4 py-12 lg:px-0 lg:py-0">
-        {/* Mobile Branding (hidden on desktop) */}
-        <div className="mb-8 flex flex-col items-center gap-2 lg:hidden">
-          <img
-            src={heuristicLabsLogo}
-            alt="Heuristic Labs"
-            className="h-10 w-10 object-contain"
-          />
-          <h1 className="font-['Inter',sans-serif] text-4xl font-black tracking-[-0.04em] text-[#1E1A14]">
-            Voicera
-          </h1>
+      {/* ── Right Panel ─────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: BG, padding: "48px 24px" }}>
+
+        {/* Mobile branding */}
+        <div className="lg:hidden flex flex-col items-center gap-3 mb-10">
+          <img src={heuristicLabsLogo} alt="Heuristic Labs" style={{ width: 40, height: 40, objectFit: "contain" }} />
+          <h1 style={{ margin: 0, fontSize: 36, fontWeight: 800, color: TEXT, letterSpacing: "-0.03em" }}>Voicera</h1>
         </div>
 
-        <div className="w-full max-w-[380px] px-4 sm:px-8 lg:px-8">
+        {/* Form card */}
+        <div style={{ width: "100%", maxWidth: 400, backgroundColor: SURFACE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: "36px 36px", boxShadow: "0 4px 24px rgba(80,56,31,0.08)" }}>
+
+          {/* ── Forgot success ──────────────────────────────────────────────── */}
           {mode === "forgot-success" ? (
-            <div className="flex flex-col items-center text-center">
-              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#ECFDF5]">
-                <Mail size={32} className="text-[#059669]" />
+            <div style={{ textAlign: "center" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+                <Mail size={26} style={{ color: "#16A34A" }} />
               </div>
-              <h2
-                style={{
-                  fontFamily: "Georgia, 'Times New Roman', serif",
-                  fontWeight: 700,
-                  fontSize: 26,
-                  color: "#1E1A14",
-                  margin: "0 0 12px",
-                }}
-              >
-                Check your email
-              </h2>
-              <p
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 400,
-                  fontSize: 14,
-                  color: "#7A746C",
-                  lineHeight: 1.5,
-                  margin: "0 0 24px",
-                }}
-              >
-                We sent a password reset link to <br />
-                <strong style={{ color: "#1E1A14", fontWeight: 600 }}>{email}</strong>
+              <h2 style={{ margin: "0 0 10px", fontWeight: 700, fontSize: 22, color: TEXT }}>Check your email</h2>
+              <p style={{ margin: "0 0 24px", fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
+                We sent a reset link to <strong style={{ color: TEXT }}>{email}</strong>
               </p>
               <button
-                type="button"
-                onClick={() => {
-                  setMode("login");
-                  setEmail("");
-                  setPassword("");
-                }}
-                style={{
-                  width: "100%",
-                  height: 44,
-                  backgroundColor: "#C8872A",
-                  borderRadius: 8,
-                  border: "none",
-                  color: "#fff",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 600,
-                  fontSize: 15,
-                  cursor: "pointer",
-                  transition: "background-color 0.15s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#B57622"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#C8872A"; }}
+                onClick={() => { setMode("login"); setEmail(""); setPassword(""); }}
+                style={{ width: "100%", height: 44, backgroundColor: ACCENT, borderRadius: 8, border: "none", color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer", transition: "background 0.15s" }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_H}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT}
               >
-                Back to log in
+                Back to login
               </button>
-              <p
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 13,
-                  color: "#7A746C",
-                  marginTop: 24,
-                }}
-              >
-                Didn't receive the email?{" "}
-                <button
-                  onClick={() => {
-                    setMode("forgot");
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    color: "#C8872A",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Click to resend
-                </button>
-              </p>
+              <button onClick={() => setMode("forgot")} style={{ marginTop: 16, background: "none", border: "none", fontSize: 13, color: ACCENT, cursor: "pointer", fontWeight: 500 }}>
+                Resend email
+              </button>
             </div>
+
           ) : (
             <>
-          <h2
-            style={{
-              fontFamily: "Georgia, 'Times New Roman', serif",
-              fontWeight: 700,
-              fontSize: 26,
-              color: "#1E1A14",
-              margin: "0 0 6px",
-            }}
-          >
-            {mode === "login" ? "Login to your account" : "Reset your password"}
-          </h2>
-          <p
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 400,
-              fontSize: 13,
-              color: "#7A746C",
-              margin: "0 0 28px",
-            }}
-          >
-            {mode === "login"
-              ? "Enter your credentials to access the platform"
-              : "Enter your email address and we'll send you a recovery link"}
-          </p>
+              {/* Heading */}
+              <h2 style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 22, color: TEXT, letterSpacing: "-0.01em" }}>
+                {mode === "login" ? "Sign in to Voicera" : "Reset your password"}
+              </h2>
+              <p style={{ margin: "0 0 28px", fontSize: 13, color: MUTED }}>
+                {mode === "login" ? "Enter your credentials to continue" : "We'll send a recovery link to your email"}
+              </p>
 
-          {/* ── Google sign-in (Login mode only) ─────────────────────────────── */}
-          {mode === "login" && (
-            <>
-              <button
-                id="google-login"
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                style={{
-                  width: "100%",
-                  height: 44,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  border: "1.5px solid #E2DDD5",
-                  borderRadius: 8,
-                  background: "#fff",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 500,
-                  fontSize: 14,
-                  color: "#1E1A14",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  transition: "border-color 0.15s, background 0.15s",
-                  opacity: loading ? 0.6 : 1,
-                  marginBottom: 4,
-                }}
-                onMouseEnter={(e) => { if (!loading) e.currentTarget.style.borderColor = "#C8872A"; }}
-                onMouseLeave={(e) => { if (!loading) e.currentTarget.style.borderColor = "#E2DDD5"; }}
-              >
-                <GoogleIcon />
-                Continue with Google
-              </button>
-
-              {/* ── Divider ───────────────────────────────────────────── */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0" }}>
-                <div style={{ flex: 1, height: 1, backgroundColor: "#E2DDD5" }} />
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: "#9E9890" }}>or continue with email</span>
-                <div style={{ flex: 1, height: 1, backgroundColor: "#E2DDD5" }} />
-              </div>
-            </>
-          )}
-
-          <form
-            onSubmit={mode === "login" ? handleSubmit : handleForgotPasswordSubmit}
-            style={{ display: "flex", flexDirection: "column", gap: 18 }}
-          >
-            {/* Error banner */}
-            {error && (
-              <div
-                role="alert"
-                style={{
-                  backgroundColor: "#FEE2E2",
-                  border: "1px solid #FECACA",
-                  borderRadius: 8,
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  color: "#DC2626",
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            {/* Success banner */}
-            {successMessage && (
-              <div
-                role="alert"
-                style={{
-                  backgroundColor: "#ECFDF5",
-                  border: "1px solid #A7F3D0",
-                  borderRadius: 8,
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  color: "#059669",
-                }}
-              >
-                {successMessage}
-              </div>
-            )}
-
-            {/* Email field */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label
-                htmlFor="email"
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 500,
-                  fontSize: 13,
-                  color: "#1E1A14",
-                }}
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                autoComplete="email"
-                disabled={loading}
-                style={{
-                  height: 40,
-                  border: "1.5px solid #E2DDD5",
-                  borderRadius: 8,
-                  padding: "0 12px",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 13,
-                  color: "#1E1A14",
-                  outline: "none",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  backgroundColor: "#fff",
-                  transition: "border-color 0.15s",
-                  opacity: loading ? 0.6 : 1,
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#C8872A")}
-                onBlur={(e) => (e.target.style.borderColor = "#E2DDD5")}
-              />
-            </div>
-
-            {/* Password field (Login mode only) */}
-            {mode === "login" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label
-                  htmlFor="password"
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontWeight: 500,
-                    fontSize: 13,
-                    color: "#1E1A14",
-                  }}
-                >
-                  Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
+              {/* Google sign-in */}
+              {mode === "login" && (
+                <>
+                  <button
+                    id="google-login"
+                    type="button"
+                    onClick={handleGoogle}
                     disabled={loading}
                     style={{
-                      height: 40,
-                      border: "1.5px solid #E2DDD5",
-                      borderRadius: 8,
-                      padding: "0 40px 0 12px",
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: 13,
-                      color: "#1E1A14",
-                      outline: "none",
-                      width: "100%",
-                      boxSizing: "border-box",
-                      backgroundColor: "#fff",
+                      width: "100%", height: 42, display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                      border: `1.5px solid ${BORDER}`, borderRadius: 8, background: "#fff",
+                      fontSize: 13, fontWeight: 500, color: TEXT,
+                      cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1, marginBottom: 4,
                       transition: "border-color 0.15s",
-                      opacity: loading ? 0.6 : 1,
                     }}
-                    onFocus={(e) => (e.target.style.borderColor = "#C8872A")}
-                    onBlur={(e) => (e.target.style.borderColor = "#E2DDD5")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    style={{
-                      position: "absolute",
-                      right: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#9E9890",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      display: "flex",
-                      alignItems: "center",
-                    }}
+                    onMouseEnter={(e) => { if (!loading) e.currentTarget.style.borderColor = ACCENT; }}
+                    onMouseLeave={(e) => { if (!loading) e.currentTarget.style.borderColor = BORDER; }}
                   >
-                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    <GoogleIcon /> Continue with Google
                   </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0" }}>
+                    <div style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
+                    <span style={{ fontSize: 11, color: "#9E9890" }}>or continue with email</span>
+                    <div style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
+                  </div>
+                </>
+              )}
+
+              {/* Error */}
+              {error && (
+                <div style={{ backgroundColor: "#FEE2E2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#DC2626", marginBottom: 18 }} role="alert">
+                  {error}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Remember me + Forgot password (Login mode only) */}
-            {mode === "login" ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    cursor: "pointer",
-                  }}
-                >
+              {/* Form */}
+              <form onSubmit={mode === "login" ? handleSubmit : handleForgotSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {/* Email */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
                   <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{
-                      width: 14,
-                      height: 14,
-                      accentColor: "#C8872A",
-                      cursor: "pointer",
-                    }}
+                    id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com" autoComplete="email" disabled={loading}
+                    style={{ height: 40, border: `1.5px solid ${BORDER}`, borderRadius: 8, padding: "0 12px", fontSize: 13, color: TEXT, outline: "none", width: "100%", boxSizing: "border-box", backgroundColor: "#fff", transition: "border-color 0.15s", opacity: loading ? 0.6 : 1 }}
+                    onFocus={(e) => e.target.style.borderColor = ACCENT}
+                    onBlur={(e) => e.target.style.borderColor = BORDER}
                   />
-                  <span
-                    style={{
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: 13,
-                      color: "#1E1A14",
-                    }}
-                  >
-                    Remember me
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("forgot");
-                    setError("");
-                    setSuccessMessage("");
-                  }}
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontWeight: 500,
-                    fontSize: 13,
-                    color: "#C8872A",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  Forgot password?
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("login");
-                    setError("");
-                    setSuccessMessage("");
-                  }}
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontWeight: 500,
-                    fontSize: 13,
-                    color: "#C8872A",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  Back to login
-                </button>
-              </div>
-            )}
+                </div>
 
-            {/* Submit button */}
-            <button
-              id={mode === "login" ? "login-submit" : "forgot-submit"}
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                height: 44,
-                backgroundColor: loading ? "#D9A05A" : "#C8872A",
-                borderRadius: 8,
-                border: "none",
-                color: "#fff",
-                fontFamily: "Inter, sans-serif",
-                fontWeight: 600,
-                fontSize: 15,
-                cursor: loading ? "not-allowed" : "pointer",
-                transition: "background-color 0.15s",
-                marginTop: 2,
-              }}
-              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#B57622"; }}
-              onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#C8872A"; }}
-            >
-              {loading
-                ? (mode === "login" ? "Signing in…" : "Sending link…")
-                : (mode === "login" ? "Login" : "Send Reset Link")}
-            </button>
-          </form>
-          </>
+                {/* Password */}
+                {mode === "login" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label htmlFor="password" style={{ fontSize: 12, fontWeight: 600, color: MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>Password</label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        id="password" type={showPassword ? "text" : "password"} value={password}
+                        onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+                        autoComplete="current-password" disabled={loading}
+                        style={{ height: 40, border: `1.5px solid ${BORDER}`, borderRadius: 8, padding: "0 40px 0 12px", fontSize: 13, color: TEXT, outline: "none", width: "100%", boxSizing: "border-box", backgroundColor: "#fff", transition: "border-color 0.15s", opacity: loading ? 0.6 : 1 }}
+                        onFocus={(e) => e.target.style.borderColor = ACCENT}
+                        onBlur={(e) => e.target.style.borderColor = BORDER}
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#9E9890", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Remember / Forgot */}
+                {mode === "login" ? (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}>
+                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ width: 14, height: 14, accentColor: ACCENT, cursor: "pointer" }} />
+                      <span style={{ fontSize: 13, color: TEXT }}>Remember me</span>
+                    </label>
+                    <button type="button" onClick={() => { setMode("forgot"); setError(""); }} style={{ fontSize: 13, color: ACCENT, background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}>
+                      Forgot password?
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button type="button" onClick={() => { setMode("login"); setError(""); }} style={{ fontSize: 13, color: ACCENT, background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}>
+                      Back to login
+                    </button>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button
+                  id={mode === "login" ? "login-submit" : "forgot-submit"}
+                  type="submit"
+                  disabled={loading}
+                  style={{ width: "100%", height: 44, backgroundColor: loading ? "#7A5C3C" : ACCENT, borderRadius: 8, border: "none", color: "#fff", fontWeight: 600, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", transition: "background-color 0.15s", marginTop: 4 }}
+                  onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = ACCENT_H; }}
+                  onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = ACCENT; }}
+                >
+                  {loading ? (mode === "login" ? "Signing in…" : "Sending link…") : (mode === "login" ? "Sign In" : "Send Reset Link")}
+                </button>
+              </form>
+            </>
           )}
+        </div>
 
-          {/* Footer note */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              marginTop: 20,
-            }}
-          >
-            <Shield size={13} style={{ color: "#9E9890" }} />
-            <span
-              style={{
-                fontFamily: "Inter, sans-serif",
-                fontSize: 12,
-                color: "#9E9890",
-              }}
-            >
-              Secured by Firebase Authentication
-            </span>
-          </div>
+        {/* Footer */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 24 }}>
+          <Shield size={12} style={{ color: "#9E9890" }} />
+          <span style={{ fontSize: 12, color: "#9E9890" }}>Secured by Firebase Authentication</span>
         </div>
       </div>
     </div>

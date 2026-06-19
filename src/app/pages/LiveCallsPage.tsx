@@ -187,7 +187,7 @@ export function LiveCallsPage() {
         {!session && (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
             <div className="w-16 h-16 rounded-full bg-[#F0EDE8] flex items-center justify-center mb-4">
-              <Phone size={28} className="text-[#C8872A]" />
+              <Phone size={28} className="text-[#50381F]" />
             </div>
             <h2 className="text-xl font-bold text-[#1E1A14] mb-2">No Active Call</h2>
             <p className="text-[13px] text-[#7A746C] max-w-sm mx-auto">
@@ -308,7 +308,7 @@ export function LiveCallsPage() {
               {session.status === "dialing" && (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="w-14 h-14 rounded-full bg-[#FDF3E3] flex items-center justify-center mb-3 animate-pulse">
-                    <Phone size={24} className="text-[#C8872A]" />
+                    <Phone size={24} className="text-[#50381F]" />
                   </div>
                   <p className="text-sm font-semibold text-[#1E1A14]">Dialing {session.contact.name}...</p>
                   <p className="text-[12px] text-[#9E9890]">{session.contact.phone}</p>
@@ -399,7 +399,7 @@ export function LiveCallsPage() {
                 <button
                   onClick={() => setSession(p => p ? { ...p, autoSummarize: !p.autoSummarize } : p)}
                   className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer border-none ${
-                    session.autoSummarize ? "bg-[#C8872A]" : "bg-[#D4CBBF]"
+                    session.autoSummarize ? "bg-[#50381F]" : "bg-[#D4CBBF]"
                   }`}
                 >
                   <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${

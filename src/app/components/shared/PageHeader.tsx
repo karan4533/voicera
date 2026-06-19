@@ -16,18 +16,23 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   );
 }
 
-export function MetricCard({ label, value }: { label: string; value: string }) {
+export function MetricCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
-    <div className="flex h-20 flex-col justify-between rounded-[10px] border border-[#E2DDD5] bg-white px-4 py-3.5">
-      <span className="text-[11px] font-medium text-[#7A746C]">{label}</span>
-      <span className="text-[1.625rem] font-bold leading-none tracking-tight text-[#1E1A14]">
+    <div className="flex flex-col justify-between rounded-[10px] border border-[#E2DDD5] bg-white px-4 py-3.5 min-h-[76px]">
+      <span className="text-[11px] font-medium text-[#7A746C] uppercase tracking-wider">{label}</span>
+      <span className={`text-[1.5rem] font-bold leading-none tracking-tight ${accent ? "text-[#50381F]" : "text-[#1E1A14]"}`}>
         {value}
       </span>
+      {sub && <span className="text-[11px] text-[#9E9890] mt-0.5">{sub}</span>}
     </div>
   );
 }
 
 export const metricsGridClass = "mb-4 grid grid-cols-2 gap-3 sm:mb-5 lg:grid-cols-4";
+
+export const metricsGrid3Class = "mb-4 grid grid-cols-1 gap-3 sm:mb-5 sm:grid-cols-3";
+
+export const metricsGrid6Class = "mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-3 xl:grid-cols-6";
 
 export const metricsGrid5Class = "mb-4 grid grid-cols-2 gap-3 sm:mb-5 sm:grid-cols-3 lg:grid-cols-5";
 
@@ -68,7 +73,7 @@ export const labelStyle: CSSProperties = {
 export const primaryBtn: CSSProperties = {
   height: 40,
   padding: "0 16px",
-  backgroundColor: "#C8872A",
+  backgroundColor: "#50381F",
   borderRadius: 8,
   border: "none",
   color: "#fff",
@@ -96,4 +101,3 @@ export const secondaryBtn: CSSProperties = {
   alignItems: "center",
   gap: 6,
 };
-

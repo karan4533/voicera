@@ -21,7 +21,7 @@ function FullPageSpinner() {
           height: 36,
           borderRadius: "50%",
           border: "3px solid #E2DDD5",
-          borderTopColor: "#C8872A",
+          borderTopColor: "#50381F",
           animation: "spin 0.75s linear infinite",
         }}
       />

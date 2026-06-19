@@ -195,6 +195,12 @@ export async function fetchDashboardMetrics(agent?: string): Promise<DashboardMe
       activeCalls: 2,
       connectedCalls: 58,
       pendingFollowUps: 4,
+      todayCalls: 48,
+      avgDuration: "02:48",
+      resolutionRate: 94,
+      escalationCount: 0,
+      activeChannels: 8,
+      avgLatency: 390,
     };
   } else if (agent === "loan") {
     return {
@@ -202,6 +208,12 @@ export async function fetchDashboardMetrics(agent?: string): Promise<DashboardMe
       activeCalls: 1,
       connectedCalls: 31,
       pendingFollowUps: 8,
+      todayCalls: 21,
+      avgDuration: "06:10",
+      resolutionRate: 78,
+      escalationCount: 3,
+      activeChannels: 4,
+      avgLatency: 450,
     };
   }
   return {
@@ -209,6 +221,12 @@ export async function fetchDashboardMetrics(agent?: string): Promise<DashboardMe
     activeCalls: 3,
     connectedCalls: 89,
     pendingFollowUps: 12,
+    todayCalls: 69,
+    avgDuration: "03:56",
+    resolutionRate: 87,
+    escalationCount: 3,
+    activeChannels: 10,
+    avgLatency: 418,
   };
 }
 

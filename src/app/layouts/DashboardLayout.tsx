@@ -1,20 +1,25 @@
 import { useEffect, useState, useCallback } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router";
 import {
-  LayoutDashboard, Phone, BarChart2, HelpCircle, ChevronDown, Bell, Menu, X, LogOut, BellRing,
+  Bot, LayoutDashboard, Sliders, BellRing, Phone,
+  Bell, Menu, X, LogOut, HelpCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useAgent, AGENTS } from "../context/AgentContext";
+import { useAgent } from "../context/AgentContext";
 import { getSystemHealth } from "../lib/api";
 import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
+// ── Sidebar nav items ──────────────────────────────────────────────────────────
+
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard",       path: "/dashboard/monitoring" },
-  { icon: BellRing,        label: "Call Scheduler",  path: "/dashboard/call-reminders" },
-  { icon: Phone,           label: "Live Calls",      path: "/dashboard/live-calls" },
-  { icon: BarChart2,       label: "Analytics",       path: "/dashboard/analytics" },
+  { icon: Bot,           label: "Agents",               path: "/dashboard/agents" },
+  { icon: LayoutDashboard, label: "Dashboard & Analytics", path: "/dashboard" },
+  { icon: Sliders,       label: "Customize Instance",   path: "/dashboard/customize" },
+  { icon: BellRing,      label: "Call Scheduler",       path: "/dashboard/call-reminders" },
+  { icon: Phone,         label: "Live Calls",           path: "/dashboard/live-calls" },
 ];
 
+// ── NavItem ────────────────────────────────────────────────────────────────────
 
 function NavItem({ icon: Icon, label, path, end, onNavigate }: {
   icon: typeof Phone; label: string; path: string; end?: boolean; onNavigate?: () => void;
@@ -25,25 +30,26 @@ function NavItem({ icon: Icon, label, path, end, onNavigate }: {
       end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `flex items-center gap-2.5 h-10 px-[18px] border-none border-l-[3px] text-[13px] no-underline w-full transition-colors ${
+        `flex items-center gap-2.5 h-10 px-[18px] border-l-[3px] text-[13px] no-underline w-full transition-colors ${
           isActive
-            ? "border-l-white bg-white/20 text-white font-semibold"
-            : "border-l-transparent text-white/70 font-normal hover:bg-white/10"
+            ? "border-l-white/90 bg-white/15 text-white font-semibold"
+            : "border-l-transparent text-white/65 font-normal hover:bg-white/10 hover:text-white/90"
         }`
       }
     >
-      <Icon size={16} />
+      <Icon size={15} />
       {label}
     </NavLink>
   );
 }
 
+// ── Layout ─────────────────────────────────────────────────────────────────────
+
 export function DashboardLayout() {
   const { session, logout } = useAuth();
-  const { agent, agentLabel, setAgent } = useAgent();
+  const { agentLabel } = useAgent();
   const navigate = useNavigate();
   const [health, setHealth] = useState({ status: "healthy", activeCalls: 0, avgLatency: 420 });
-  const [agentOpen, setAgentOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
 
@@ -53,13 +59,6 @@ export function DashboardLayout() {
     const id = setInterval(load, 5000);
     return () => clearInterval(id);
   }, []);
-
-  // Close agent dropdown on outside click
-  useEffect(() => {
-    const close = () => setAgentOpen(false);
-    if (agentOpen) document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [agentOpen]);
 
   // Close sidebar on Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -83,22 +82,30 @@ export function DashboardLayout() {
 
   const sidebar = (
     <>
-      <div className="flex items-center gap-2 px-5 py-5">
-        <img src={heuristicLabsLogo} alt="Voicera" className="h-[30px] w-[30px] object-contain shrink-0" />
-        <span className="font-[Georgia,serif] text-lg font-bold italic" style={{ color: "#1E1A14" }}>
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-5 pt-6 pb-5">
+        <img src={heuristicLabsLogo} alt="Voicera" className="h-[28px] w-[28px] object-contain shrink-0" />
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 16, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
           Voicera
         </span>
         <button
           type="button"
           onClick={closeSidebar}
-          className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 bg-white/15 lg:hidden cursor-pointer"
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 lg:hidden cursor-pointer border-none"
           aria-label="Close menu"
         >
-          <X size={18} color="white" />
+          <X size={16} color="white" />
         </button>
       </div>
 
-      <nav className="mt-1 flex flex-1 flex-col">
+      {/* Section label */}
+      <div className="px-5 pb-2">
+        <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          Navigation
+        </span>
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-0.5">
         {navItems.map(({ icon, label, path }) => (
           <NavItem
             key={path}
@@ -111,28 +118,28 @@ export function DashboardLayout() {
         ))}
       </nav>
 
-      <div className="border-t border-white/25">
-        <button className="flex h-10 w-full items-center gap-2 border-none bg-transparent px-[18px] text-white/70 cursor-pointer text-xs hover:text-white transition-colors">
-          <HelpCircle size={15} />
-          Help &amp; Support
+      {/* Footer */}
+      <div className="border-t border-white/10 pt-2">
+        <button className="flex h-9 w-full items-center gap-2 border-none bg-transparent px-[18px] text-white/50 cursor-pointer text-[12px] hover:text-white/80 transition-colors">
+          <HelpCircle size={14} />
+          Help & Support
         </button>
 
-        {/* User info row — display only */}
-        <div className="flex h-12 w-full items-center gap-2 px-[18px]">
-          <div className="h-[30px] w-[30px] shrink-0 rounded-full bg-white/25 flex items-center justify-center">
-            <span className="text-[11px] font-bold text-white/80 uppercase">
+        {/* User info row */}
+        <div className="flex h-12 w-full items-center gap-2.5 px-[18px] mb-1">
+          <div className="h-7 w-7 shrink-0 rounded-full bg-white/20 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-white uppercase">
               {session?.user.name?.[0] ?? "A"}
             </span>
           </div>
           <div className="flex min-w-0 flex-1 flex-col items-start">
-            <span className="text-xs font-semibold text-white">
+            <span className="text-[12px] font-semibold text-white/90 truncate max-w-[110px]">
               {session?.user.name ?? "Admin User"}
             </span>
-            <span className="max-w-[110px] truncate text-[11px] text-white/65">
+            <span className="max-w-[110px] truncate text-[11px] text-white/45">
               {session?.user.email ?? "admin@voicera.ai"}
             </span>
           </div>
-          {/* Separate, clearly-labelled logout button */}
           <button
             type="button"
             onClick={() => setLogoutConfirm(true)}
@@ -140,7 +147,7 @@ export function DashboardLayout() {
             aria-label="Sign out"
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border-none"
           >
-            <LogOut size={13} color="rgba(255,255,255,0.75)" />
+            <LogOut size={13} color="rgba(255,255,255,0.65)" />
           </button>
         </div>
       </div>
@@ -148,7 +155,7 @@ export function DashboardLayout() {
   );
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F9F9F7] font-[Inter,sans-serif]">
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F7F4EF] font-[Inter,sans-serif]">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -159,10 +166,10 @@ export function DashboardLayout() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 lg:static lg:z-auto lg:min-w-[200px] lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 lg:static lg:z-auto lg:min-w-[210px] lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{ backgroundColor: "#B8946A", borderRight: "1px solid rgba(255,255,255,0.15)" }}
+        style={{ backgroundColor: "#50381F" }}
       >
         {sidebar}
       </aside>
@@ -179,59 +186,32 @@ export function DashboardLayout() {
               >
                 <Menu size={18} color="#7A746C" />
               </button>
-              <div className="relative" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-[#7A746C] hidden sm:inline">Agent:</span>
-                  <button
-                    type="button"
-                    onClick={() => setAgentOpen(!agentOpen)}
-                    className="flex max-w-[130px] items-center gap-1.5 rounded-md border border-[#E2DDD5] bg-[#F9F9F7] px-2.5 py-1.5 text-[13px] font-medium text-[#1E1A14] cursor-pointer sm:max-w-none"
-                  >
-                    <span className="truncate">{agentLabel}</span>
-                    <ChevronDown size={14} className="shrink-0 text-[#7A746C]" />
-                  </button>
-                </div>
-                {agentOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-[#E2DDD5] bg-white shadow-lg sm:left-12">
-                    {AGENTS.map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => { setAgent(a.id); setAgentOpen(false); }}
-                        className={`block w-full border-none px-3.5 py-2.5 text-left text-[13px] cursor-pointer first:rounded-t-lg last:rounded-b-lg ${
-                          agent === a.id ? "bg-[#FDF3E3] font-semibold text-[#C8872A]" : "bg-white font-normal text-[#1E1A14] hover:bg-[#F9F9F7]"
-                        }`}
-                      >
-                        {a.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-[12px] font-medium text-[#9E9890]">Active Agent:</span>
+                <span className="flex max-w-[140px] items-center gap-1.5 rounded-md border border-[#E2DDD5] bg-[#F7F4EF] px-2.5 py-1.5 text-[13px] font-medium text-[#1E1A14] sm:max-w-none">
+                  <span className="truncate">{agentLabel}</span>
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-5">
               <div className="flex items-center gap-1.5">
                 <div className={`h-2 w-2 rounded-full ${health.status === "healthy" ? "bg-[#22C55E]" : "bg-[#F59E0B]"}`} />
-                <span className="text-[13px] font-semibold text-[#1E1A14] hidden sm:inline">
+                <span className="text-[12px] font-medium text-[#7A746C] hidden sm:inline">
                   {health.status === "healthy" ? "System Healthy" : "Degraded"}
                 </span>
-                <span className="text-[13px] font-semibold text-[#1E1A14] sm:hidden">
-                  System
-                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-bold text-[#1E1A14] bg-[#FDF3E3] text-[#C8872A] px-2.5 py-0.5 rounded-full">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-semibold text-[#50381F] bg-[#EDE4D8] px-2.5 py-0.5 rounded-full">
                   {health.activeCalls} Active
                 </span>
               </div>
-
               <button
                 type="button"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E2DDD5] bg-white cursor-pointer"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#E2DDD5] bg-white cursor-pointer hover:border-[#C9B99E] transition-colors"
                 aria-label="Notifications"
               >
-                <Bell size={16} className="text-[#7A746C]" />
+                <Bell size={15} className="text-[#7A746C]" />
               </button>
             </div>
           </div>
@@ -264,7 +244,7 @@ export function DashboardLayout() {
               <button
                 type="button"
                 onClick={() => setLogoutConfirm(false)}
-                className="h-9 rounded-lg border border-[#E2DDD5] bg-white px-4 text-[13px] font-medium text-[#1E1A14] cursor-pointer hover:bg-[#F9F9F7] transition-colors"
+                className="h-9 rounded-lg border border-[#E2DDD5] bg-white px-4 text-[13px] font-medium text-[#1E1A14] cursor-pointer hover:bg-[#F7F4EF] transition-colors"
               >
                 Cancel
               </button>
