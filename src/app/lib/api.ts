@@ -92,7 +92,7 @@ export async function loginUser(email: string, password: string) {
  */
 export async function getDashboardMetrics(agent?: string): Promise<DashboardMetrics> {
   if (USE_MOCK) return mock.fetchDashboardMetrics(agent);
-  return apiFetch<DashboardMetrics>(`/dashboard/metrics?agent=${agent}`);
+  return apiFetch<DashboardMetrics>(`/dashboard/metrics${agent ? `?agent=${agent}` : ""}`);
 }
 
 /**
@@ -100,9 +100,9 @@ export async function getDashboardMetrics(agent?: string): Promise<DashboardMetr
  * Query params: agent
  * Returns: ExtractedEntity[]  (Bookings, Orders, Payments, etc.)
  */
-export async function getExtractedData(agent: string): Promise<ExtractedEntity[]> {
+export async function getExtractedData(agent?: string): Promise<ExtractedEntity[]> {
   if (USE_MOCK) return mock.fetchExtractedData(agent);
-  return apiFetch<ExtractedEntity[]>(`/dashboard/extractions?agent=${agent}`);
+  return apiFetch<ExtractedEntity[]>(`/dashboard/extractions${agent ? `?agent=${agent}` : ""}`);
 }
 
 /**

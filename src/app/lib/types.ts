@@ -1,4 +1,38 @@
-export type AgentType = "restaurant" | "loan";
+// ── Agent Types ────────────────────────────────────────────────────────────────
+
+export type AgentType =
+  | "restaurant"
+  | "loan"
+  | "shop"
+  | "customer-support"
+  | "healthcare"
+  | "real-estate"
+  | "insurance"
+  | "hr"
+  | "banking"
+  | "custom";
+
+export type AgentStatus = "active" | "draft" | "archived";
+
+export interface AgentDefinition {
+  id: string;
+  name: string;
+  type: AgentType;
+  category: string;
+  description: string;
+  icon: string;
+  color: string;
+  status: AgentStatus;
+  stats: {
+    callsToday: number;
+    resolutionRate: number;
+    avgDuration: string;
+  };
+  knowledgeBaseId?: string;
+  tone?: string;
+  languages?: string[];
+  createdAt: string;
+}
 
 export type CallStatus = "Active" | "Ringing" | "Hold" | "Completed";
 
@@ -6,7 +40,15 @@ export type CallStatus = "Active" | "Ringing" | "Hold" | "Completed";
 
 export type ReminderDomain =
   | "restaurant"
-  | "loan";
+  | "loan"
+  | "shop"
+  | "customer-support"
+  | "healthcare"
+  | "real-estate"
+  | "insurance"
+  | "hr"
+  | "banking"
+  | "custom";
 
 export type ReminderStatus =
   | "pending"
@@ -114,11 +156,12 @@ export type IndexStatus = "pending" | "indexing" | "indexed" | "error";
 export interface KnowledgeFile {
   id: string;
   name: string;
-  category: "menu" | "faq";
+  category: "menu" | "faq" | "product" | "policy" | "custom";
   format: string;
   size: string;
   status: IndexStatus;
   uploadedAt: string;
+  agentId?: string;
 }
 
 export type SyncStatus = "connected" | "syncing" | "error" | "disconnected";
@@ -185,6 +228,12 @@ export interface DashboardMetrics {
   activeCalls: number;
   connectedCalls: number;
   pendingFollowUps: number;
+  todayCalls: number;
+  avgDuration: string;
+  resolutionRate: number;
+  escalationCount: number;
+  activeChannels: number;
+  avgLatency: number;
 }
 
 export interface AnalyticsMetrics {
@@ -192,6 +241,23 @@ export interface AnalyticsMetrics {
   sentimentTrend: string;
   escalationCount: number;
   csatScore: number;
+}
+
+export interface CallVolumePoint {
+  day: string;
+  calls: number;
+  resolved: number;
+}
+
+export interface SentimentPoint {
+  day: string;
+  score: number;
+}
+
+export interface LanguageDistribution {
+  language: string;
+  count: number;
+  percentage: number;
 }
 
 export interface ClientDomain {
@@ -213,4 +279,15 @@ export interface ExtractedEntity {
   callId?: string;
   summary?: string;
   transcript?: string;
+}
+
+// ── CSV Import ─────────────────────────────────────────────────────────────────
+
+export interface CsvProductRow {
+  itemName: string;
+  category: string;
+  price: string;
+  description: string;
+  availability: string;
+  sku: string;
 }

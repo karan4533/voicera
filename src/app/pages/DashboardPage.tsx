@@ -1,23 +1,76 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router";
-import { Activity, Calendar, Users, ShoppingBag, MessageSquare, ArrowRight, X } from "lucide-react";
-import { PageHeader, MetricCard, cardStyle, metricsGridClass } from "../components/shared/PageHeader";
+import { X, TrendingUp, Phone, Clock, CheckCircle, AlertTriangle, Zap, Activity, Search, Download } from "lucide-react";
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
+import { PageHeader } from "../components/shared/PageHeader";
 import { getDashboardMetrics, getExtractedData } from "../lib/api";
 import { useAgent } from "../context/AgentContext";
 import type { DashboardMetrics, ExtractedEntity } from "../lib/types";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Mock chart data ────────────────────────────────────────────────────────────
 
-const getExtractionIcon = (type: string) => {
-  switch (type) {
-    case "Booking":  return <Calendar    size={16} color="#4F46E5" />;
-    case "Lead":     return <Users       size={16} color="#C8872A" />;
-    case "Order":    return <ShoppingBag size={16} color="#15803D" />;
-    case "Enquiry":  return <MessageSquare size={16} color="#0369A1" />;
-    case "Payment":  return <Activity    size={16} color="#C2410C" />;
-    default:         return <Activity    size={16} color="#7A746C" />;
-  }
-};
+const CALL_VOLUME_DATA = [
+  { day: "Mon", calls: 124, resolved: 108 },
+  { day: "Tue", calls: 98,  resolved: 89 },
+  { day: "Wed", calls: 145, resolved: 131 },
+  { day: "Thu", calls: 162, resolved: 144 },
+  { day: "Fri", calls: 189, resolved: 170 },
+  { day: "Sat", calls: 72,  resolved: 64 },
+  { day: "Sun", calls: 51,  resolved: 45 },
+];
+
+const SENTIMENT_DATA = [
+  { day: "Mon", score: 74 },
+  { day: "Tue", score: 71 },
+  { day: "Wed", score: 76 },
+  { day: "Thu", score: 78 },
+  { day: "Fri", score: 82 },
+  { day: "Sat", score: 85 },
+  { day: "Sun", score: 80 },
+];
+
+const LANGUAGE_DATA = [
+  { language: "English",  count: 342, percentage: 41 },
+  { language: "Hindi",    count: 210, percentage: 25 },
+  { language: "Tamil",    count: 151, percentage: 18 },
+  { language: "Telugu",   count: 84,  percentage: 10 },
+  { language: "Gujarati", count: 50,  percentage: 6 },
+];
+
+const LANG_COLORS = ["#50381F", "#7A5C3C", "#A88060", "#C9B99E", "#E2DDD5"];
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function KpiCard({
+  icon: Icon, label, value, sub, iconColor,
+}: { icon: typeof Phone; label: string; value: string; sub?: string; iconColor: string }) {
+  return (
+    <div className="bg-white border border-[#E2DDD5] rounded-xl p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider">{label}</span>
+        <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${iconColor}15` }}>
+          <Icon size={15} style={{ color: iconColor }} />
+        </div>
+      </div>
+      <div className="flex items-end gap-2">
+        <span className="text-[1.6rem] font-bold leading-none tracking-tight text-[#1E1A14]">{value}</span>
+        {sub && <span className="text-[12px] text-[#9E9890] mb-0.5">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#F0EDE8]">
+        <h2 className="m-0 text-[14px] font-semibold text-[#1E1A14]">{title}</h2>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -26,24 +79,41 @@ const getStatusBadge = (status: string) => {
     case "Action Required":
       return <span style={{ fontSize: 11, fontWeight: 600, color: "#DC2626", backgroundColor: "#FEE2E2", padding: "2px 8px", borderRadius: 12 }}>Action Required</span>;
     case "Pending":
-      return <span style={{ fontSize: 11, fontWeight: 600, color: "#C2410C", backgroundColor: "#FFEDD5", padding: "2px 8px", borderRadius: 12 }}>Pending Review</span>;
+      return <span style={{ fontSize: 11, fontWeight: 600, color: "#92400E", backgroundColor: "#FEF3C7", padding: "2px 8px", borderRadius: 12 }}>Pending</span>;
     default:
       return <span style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", backgroundColor: "#F3F4F6", padding: "2px 8px", borderRadius: 12 }}>{status}</span>;
   }
 };
 
+// ── Custom Tooltip ─────────────────────────────────────────────────────────────
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name?: string; color?: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E2DDD5", borderRadius: 8, padding: "8px 12px", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
+      <p style={{ margin: "0 0 4px", fontWeight: 600, color: "#1E1A14" }}>{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ margin: 0, color: p.color || "#50381F" }}>
+          {p.name ? `${p.name}: ` : ""}<strong>{p.value}{p.name === "Sentiment" ? "%" : ""}</strong>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
-  const { agent, agentLabel } = useAgent();
+  const { agentLabel } = useAgent();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedEntity[]>([]);
   const [selectedCall, setSelectedCall] = useState<ExtractedEntity | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(() => {
-    getDashboardMetrics(agent).then(setMetrics);
-    getExtractedData(agent).then(setExtractedData);
-  }, [agent]);
+    getDashboardMetrics().then(setMetrics);
+    getExtractedData().then(setExtractedData);
+  }, []);
 
   useEffect(() => {
     load();
@@ -51,177 +121,266 @@ export function DashboardPage() {
     return () => clearInterval(id);
   }, [load]);
 
+  const filtered = extractedData.filter((e) =>
+    search === "" || e.customerName.toLowerCase().includes(search.toLowerCase()) || e.contact.includes(search)
+  );
+
+  const handleExportCSV = () => {
+    const headers = ["Type", "Customer", "Contact", "Status", "Timestamp"];
+    const rows = filtered.map((e) => [e.type, e.customerName, e.contact, e.status, e.timestamp]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `dashboard_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
   return (
     <>
       <PageHeader
-        title={`${agentLabel} Dashboard`}
-        subtitle="Mission control — real-time call stats and extracted customer data"
+        title="Dashboard"
+        subtitle={`Operational overview for ${agentLabel} — live metrics, trends, and recent calls`}
       />
 
-      {/* Metrics Row */}
-      <div className={metricsGridClass} style={{ marginBottom: 24 }}>
-        <MetricCard label="Total Calls"       value={metrics ? metrics.totalCalls.toLocaleString() : "—"} />
-        <MetricCard label="Active Calls"      value={metrics ? String(metrics.activeCalls)          : "—"} />
-        <MetricCard label="Connected Calls"   value={metrics ? String(metrics.connectedCalls)        : "—"} />
-        <MetricCard label="Pending Follow-ups" value={metrics ? String(metrics.pendingFollowUps)     : "—"} />
+      {/* ── KPI Row ─────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+        <KpiCard icon={Phone}         label="Active Calls"       value={metrics ? String(metrics.activeCalls) : "—"}                   iconColor="#50381F" />
+        <KpiCard icon={TrendingUp}    label="Today's Calls"      value={metrics ? String(metrics.todayCalls ?? 0) : "—"}               iconColor="#2563EB" />
+        <KpiCard icon={Clock}         label="Avg Duration"        value={metrics ? (metrics.avgDuration ?? "—") : "—"}                  iconColor="#7C3AED" />
+        <KpiCard icon={CheckCircle}   label="Resolution Rate"    value={metrics ? `${metrics.resolutionRate ?? 0}%` : "—"}             iconColor="#16A34A" />
+        <KpiCard icon={AlertTriangle} label="Escalations"        value={metrics ? String(metrics.escalationCount ?? 0) : "—"}          iconColor="#DC2626" />
+        <KpiCard icon={Zap}           label="Avg Latency"        value={metrics ? `${metrics.avgLatency ?? 0}ms` : "—"}                iconColor="#D97706" />
       </div>
 
-      {/* Recent Call Results table */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-3">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1E1A14", margin: 0 }}>Recent Call Results</h2>
-              <p style={{ fontSize: 13, color: "#7A746C", margin: "4px 0 0 0" }}>Completed calls and automatically extracted customer data.</p>
-            </div>
-            <Link
-              to="/dashboard/analytics"
-              style={{ fontSize: 13, color: "#C8872A", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, fontWeight: 500 }}
-            >
-              View All <ArrowRight size={14} />
-            </Link>
+      {/* ── Charts Row 1 ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <SectionCard title="Call Volume — Last 7 Days">
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={CALL_VOLUME_DATA} barSize={18} barCategoryGap="30%">
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9E9890" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#9E9890" }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip content={<ChartTooltip />} />
+              <Bar dataKey="calls" name="Total" fill="#C9B99E" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="resolved" name="Resolved" fill="#50381F" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex items-center gap-4 mt-3">
+            <span className="flex items-center gap-1.5 text-[11px] text-[#7A746C]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#C9B99E] inline-block" /> Total Calls
+            </span>
+            <span className="flex items-center gap-1.5 text-[11px] text-[#7A746C]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#50381F] inline-block" /> Resolved
+            </span>
           </div>
+        </SectionCard>
 
-          <div style={{ ...cardStyle, overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#F9F9F7", borderBottom: "1px solid #E2DDD5" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#7A746C", textTransform: "uppercase", letterSpacing: "0.05em" }}>Type</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#7A746C", textTransform: "uppercase", letterSpacing: "0.05em" }}>Customer</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#7A746C", textTransform: "uppercase", letterSpacing: "0.05em" }}>Details</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#7A746C", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {extractedData.map((item, i) => (
-                  <tr
-                    key={item.id}
-                    style={{
-                      borderBottom: i < extractedData.length - 1 ? "1px solid #F0EDE8" : "none",
-                      backgroundColor: selectedCall?.id === item.id ? "#FDF8F3" : "#fff",
-                      cursor: "pointer",
-                    }}
-                    className="hover:bg-[#F9F9F7]"
-                    onClick={() => setSelectedCall(item)}
-                  >
-                    <td style={{ padding: "16px", verticalAlign: "top" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {getExtractionIcon(item.type)}
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#1E1A14" }}>{item.type}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#9E9890", marginTop: 4, marginLeft: 24 }}>{item.timestamp}</div>
-                    </td>
-                    <td style={{ padding: "16px", verticalAlign: "top" }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1E1A14" }}>{item.customerName}</div>
-                      <div style={{ fontSize: 12, color: "#7A746C", fontFamily: "Roboto Mono, monospace", marginTop: 2 }}>{item.contact}</div>
-                    </td>
-                    <td style={{ padding: "16px", verticalAlign: "top" }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxWidth: 380 }}>
-                        {Object.entries(item.attributes).map(([key, value]) => (
-                          <div
-                            key={key}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              backgroundColor: "#F9F9F7", border: "1px solid #E2DDD5",
-                              borderRadius: 6, padding: "2px 8px", fontSize: 12,
-                            }}
-                          >
-                            <span style={{ color: "#7A746C", fontWeight: 500 }}>{key}:</span>
-                            <span style={{ color: "#1E1A14", fontWeight: 600 }}>{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px", verticalAlign: "top" }}>
-                      {getStatusBadge(item.status)}
-                    </td>
-                  </tr>
-                ))}
-                {extractedData.length === 0 && (
-                  <tr>
-                    <td colSpan={4} style={{ padding: 32, textAlign: "center", color: "#9E9890", fontSize: 13 }}>
-                      No data has been extracted yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        <SectionCard title="Sentiment Trend — Last 7 Days">
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={SENTIMENT_DATA}>
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9E9890" }} axisLine={false} tickLine={false} />
+              <YAxis domain={[60, 100]} tick={{ fontSize: 11, fill: "#9E9890" }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip content={<ChartTooltip />} />
+              <Line
+                type="monotone" dataKey="score" name="Sentiment"
+                stroke="#50381F" strokeWidth={2} dot={{ fill: "#50381F", r: 4 }}
+                activeDot={{ r: 5, fill: "#50381F" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-[11px] text-[#7A746C]">Positive sentiment score (%)</span>
+            <span className="text-[12px] font-semibold text-[#16A34A]">↑ +4.2% vs last week</span>
           </div>
+        </SectionCard>
+      </div>
+
+      {/* ── Charts Row 2 ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Language Distribution */}
+        <SectionCard title="Language Distribution">
+          <div className="flex flex-col gap-3">
+            {LANGUAGE_DATA.map((l, i) => (
+              <div key={l.language} className="flex items-center gap-3">
+                <span className="text-[12px] text-[#7A746C] w-16 shrink-0">{l.language}</span>
+                <div className="flex-1 bg-[#F0EDE8] rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-2 rounded-full transition-all duration-700"
+                    style={{ width: `${l.percentage}%`, backgroundColor: LANG_COLORS[i] }}
+                  />
+                </div>
+                <span className="text-[12px] font-semibold text-[#1E1A14] w-10 text-right">{l.count}</span>
+                <span className="text-[11px] text-[#9E9890] w-8 text-right">{l.percentage}%</span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        {/* System Health */}
+        <SectionCard title="System Health">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {[
+              { label: "System Status",    value: "Healthy",  color: "#16A34A", bg: "#DCFCE7" },
+              { label: "Active Channels",  value: metrics ? String(metrics.activeChannels ?? 10) : "10",  color: "#50381F", bg: "#EDE4D8" },
+              { label: "Avg Latency",      value: metrics ? `${metrics.avgLatency ?? 420}ms` : "420ms", color: "#D97706", bg: "#FEF3C7" },
+              { label: "Uptime",           value: "99.9%",    color: "#2563EB", bg: "#DBEAFE" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-[#E2DDD5] p-3">
+                <p className="text-[11px] text-[#9E9890] m-0 mb-1">{item.label}</p>
+                <p className="text-[14px] font-bold m-0" style={{ color: item.color }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 bg-[#F7F4EF] rounded-lg p-3">
+            <Activity size={14} className="text-[#50381F] shrink-0" />
+            <span className="text-[12px] text-[#7A746C]">All systems operating within normal parameters. No alerts.</span>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* ── Recent Calls Table ───────────────────────────────────────────────── */}
+      <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#F0EDE8] flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="m-0 text-[14px] font-semibold text-[#1E1A14]">Recent Call Results</h2>
+            <p className="m-0 mt-0.5 text-[12px] text-[#9E9890]">Completed calls with automatically extracted customer data</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9E9890]" />
+              <input
+                type="text"
+                placeholder="Search calls..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 pr-3 rounded-lg border border-[#E2DDD5] bg-[#F7F4EF] text-[12px] text-[#1E1A14] outline-none focus:border-[#C9B99E] transition-colors w-44"
+              />
+            </div>
+            <button
+              onClick={handleExportCSV}
+              className="h-8 px-3 rounded-lg border border-[#E2DDD5] bg-white text-[12px] font-medium text-[#7A746C] cursor-pointer hover:bg-[#F7F4EF] transition-colors flex items-center gap-1.5"
+            >
+              <Download size={12} /> Export
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-[#F7F4EF] border-b border-[#E2DDD5]">
+                {["Type", "Customer", "Details", "Status", "Time"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-[#9E9890] uppercase tracking-wider">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr
+                  key={item.id}
+                  onClick={() => setSelectedCall(item)}
+                  className="border-b border-[#F0EDE8] last:border-0 cursor-pointer hover:bg-[#F7F4EF] transition-colors"
+                  style={{ backgroundColor: selectedCall?.id === item.id ? "#F7F4EF" : undefined }}
+                >
+                  <td className="px-4 py-3.5">
+                    <span className="text-[13px] font-semibold text-[#1E1A14]">{item.type}</span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="text-[13px] font-medium text-[#1E1A14]">{item.customerName}</div>
+                    <div className="text-[11px] text-[#9E9890] font-mono mt-0.5">{item.contact}</div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-wrap gap-1.5 max-w-sm">
+                      {Object.entries(item.attributes).slice(0, 3).map(([key, value]) => (
+                        <span key={key} className="inline-flex items-center gap-1 bg-[#F7F4EF] border border-[#E2DDD5] rounded-md px-2 py-0.5 text-[11px]">
+                          <span className="text-[#9E9890]">{key}:</span>
+                          <span className="text-[#1E1A14] font-medium">{value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5">{getStatusBadge(item.status)}</td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-[12px] text-[#9E9890]">{item.timestamp}</span>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-[13px] text-[#9E9890]">
+                    No call records found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Slide-out Panel */}
+      {/* ── Slide-out detail panel ───────────────────────────────────────────── */}
       {selectedCall !== null && (
-        <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] max-w-[100vw] bg-white border-l border-[#E2DDD5] shadow-2xl flex flex-col z-50 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] shrink-0 bg-[#FDFDFD]">
+        <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] max-w-[100vw] bg-white border-l border-[#E2DDD5] shadow-2xl flex flex-col z-50">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] shrink-0 bg-[#F7F4EF]">
             <div>
-              <div className="font-bold text-[16px] text-[#1E1A14]">{selectedCall.customerName}</div>
-              <div className="text-[12px] text-[#7A746C]">{selectedCall.contact}</div>
+              <div className="font-bold text-[15px] text-[#1E1A14]">{selectedCall.customerName}</div>
+              <div className="text-[12px] text-[#7A746C] font-mono">{selectedCall.contact}</div>
             </div>
             <button
               onClick={() => setSelectedCall(null)}
-              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F0EDE8] transition-colors cursor-pointer border-none bg-transparent"
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#E2DDD5] transition-colors cursor-pointer border-none bg-transparent"
             >
-              <X size={18} className="text-[#7A746C]" />
+              <X size={16} className="text-[#7A746C]" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
-            {/* Status & Type */}
+          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {getExtractionIcon(selectedCall.type)}
-                <span className="text-[14px] font-bold text-[#1E1A14]">{selectedCall.type}</span>
-              </div>
+              <span className="text-[13px] font-bold text-[#1E1A14]">{selectedCall.type}</span>
               {getStatusBadge(selectedCall.status)}
             </div>
 
-            {/* Extracted Data */}
             <div>
-              <h3 className="text-[12px] font-bold text-[#7A746C] uppercase tracking-wider mb-3">Extracted Data</h3>
-              <div className="bg-[#F9F9F7] rounded-xl border border-[#E2DDD5] p-4 flex flex-col gap-3">
+              <h3 className="text-[11px] font-bold text-[#9E9890] uppercase tracking-wider mb-2">Extracted Data</h3>
+              <div className="bg-[#F7F4EF] rounded-xl border border-[#E2DDD5] p-4 flex flex-col gap-3">
                 {Object.entries(selectedCall.attributes ?? {}).map(([key, value]) => (
                   <div key={key} className="flex justify-between items-center border-b border-[#E2DDD5] pb-2 last:border-0 last:pb-0">
-                    <span className="text-[13px] text-[#7A746C] font-medium">{key}</span>
-                    <span className="text-[13px] text-[#1E1A14] font-semibold">{value}</span>
+                    <span className="text-[12px] text-[#7A746C] font-medium">{key}</span>
+                    <span className="text-[12px] text-[#1E1A14] font-semibold">{value}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* AI Summary */}
-            <div>
-              <h3 className="text-[12px] font-bold text-[#7A746C] uppercase tracking-wider mb-3">AI Summary</h3>
-              <div className="bg-[#FDF8F3] border border-[#F0DDC5] rounded-xl p-4 text-[13px] text-[#C8872A] leading-relaxed">
-                {selectedCall.summary ?? "Summary generation in progress..."}
+            {selectedCall.summary && (
+              <div>
+                <h3 className="text-[11px] font-bold text-[#9E9890] uppercase tracking-wider mb-2">AI Summary</h3>
+                <div className="bg-[#EDE4D8] border border-[#C9B99E] rounded-xl p-4 text-[13px] text-[#50381F] leading-relaxed">
+                  {selectedCall.summary}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Full Transcript */}
-            <div>
-              <h3 className="text-[12px] font-bold text-[#7A746C] uppercase tracking-wider mb-3">Full Transcript</h3>
-              <div className="bg-white border border-[#E2DDD5] rounded-xl p-4 max-h-[300px] overflow-y-auto">
-                {selectedCall.transcript ? (
-                  <div className="flex flex-col gap-3 text-[13px] leading-relaxed">
-                    {selectedCall.transcript.split("\n").map((line, idx) => {
-                      const isAi = line.startsWith("AI:");
-                      return (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-lg ${isAi ? "bg-[#F9F9F7] text-[#4A453E]" : "bg-[#EFF6FF] text-[#1E3A8A] self-end"}`}
-                        >
-                          <strong>{isAi ? "AI Agent" : "Customer"}:</strong>{" "}
-                          {line.replace(/^(AI|Customer):\s*/, "")}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-[13px] text-[#9E9890] italic">Transcript not available yet.</p>
-                )}
+            {selectedCall.transcript && (
+              <div>
+                <h3 className="text-[11px] font-bold text-[#9E9890] uppercase tracking-wider mb-2">Transcript</h3>
+                <div className="bg-white border border-[#E2DDD5] rounded-xl p-4 max-h-[260px] overflow-y-auto flex flex-col gap-2">
+                  {selectedCall.transcript.split("\n").map((line, idx) => {
+                    const isAi = line.startsWith("AI:");
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-2.5 rounded-lg text-[12px] leading-relaxed ${isAi ? "bg-[#F7F4EF] text-[#4A453E]" : "bg-[#EDE4D8] text-[#50381F]"}`}
+                      >
+                        <strong>{isAi ? "AI Agent" : "Customer"}:</strong>{" "}
+                        {line.replace(/^(AI|Customer):\s*/, "")}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
