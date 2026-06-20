@@ -117,7 +117,7 @@ export function LoginScreen() {
             Voicera
           </h1>
           <p style={{ margin: 0, fontSize: 17, fontWeight: 400, color: "rgba(255,255,255,0.65)", maxWidth: 300, lineHeight: 1.55 }}>
-            AI Voice Platform for smarter inbound and outbound conversations — built for enterprise teams.
+            - AI Voice Platform for smarter conversations.
           </p>
 
 
