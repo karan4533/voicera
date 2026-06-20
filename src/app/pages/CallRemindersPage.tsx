@@ -17,17 +17,17 @@ import { useAgent } from "../context/AgentContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const DOMAIN_LABELS: Record<ReminderDomain, string> = {
+const DOMAIN_LABELS: Partial<Record<ReminderDomain, string>> = {
   restaurant: "Restaurant",
   loan: "AI Feedback",
 };
 
-const DOMAIN_COLORS: Record<ReminderDomain, string> = {
+const DOMAIN_COLORS: Partial<Record<ReminderDomain, string>> = {
   restaurant: "bg-orange-50 text-orange-700 border-orange-200",
   loan: "bg-blue-50 text-blue-700 border-blue-200",
 };
 
-const DOMAIN_FIELDS: Record<ReminderDomain, { key: string; label: string; type: "text" | "number" | "date" }[]> = {
+const DOMAIN_FIELDS: Partial<Record<ReminderDomain, { key: string; label: string; type: "text" | "number" | "date" }[]>> = {
   restaurant: [
     { key: "visitCount", label: "Visit Count", type: "number" },
     { key: "lastVisitDate", label: "Last Visit Date", type: "date" },
@@ -435,8 +435,8 @@ export function CallRemindersPage() {
           <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
             {/* Badges */}
             <div className="flex flex-wrap gap-2">
-              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${DOMAIN_COLORS[detailContact.domain]}`}>
-                {DOMAIN_LABELS[detailContact.domain]}
+              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${DOMAIN_COLORS[detailContact.domain] || "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                {DOMAIN_LABELS[detailContact.domain] || detailContact.domain}
               </span>
               <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[detailContact.status]}`}>
                 {STATUS_ICONS[detailContact.status]} {STATUS_LABELS[detailContact.status]}
@@ -496,7 +496,7 @@ export function CallRemindersPage() {
             {Object.keys(detailContact.attributes).length > 0 && (
               <div>
                 <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
-                  {DOMAIN_LABELS[detailContact.domain]} Details
+                  {DOMAIN_LABELS[detailContact.domain] || detailContact.domain} Details
                 </div>
                 <div className="rounded-lg border border-[#E2DDD5] overflow-hidden">
                   {Object.entries(detailContact.attributes).map(([key, val], i, arr) => (
@@ -637,13 +637,13 @@ export function CallRemindersPage() {
                 />
               </div>
 
-              {DOMAIN_FIELDS[agent as ReminderDomain].length > 0 && (
+              {(DOMAIN_FIELDS[agent as ReminderDomain] || []).length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2">
-                    {DOMAIN_LABELS[agent as ReminderDomain]} Details
+                    {DOMAIN_LABELS[agent as ReminderDomain] || agent} Details
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {DOMAIN_FIELDS[agent as ReminderDomain].map((f) => (
+                    {(DOMAIN_FIELDS[agent as ReminderDomain] || []).map((f) => (
                       <div key={f.key}>
                         <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">{f.label}</label>
                         <input

@@ -1,9 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router";
 import {
-  Search, Filter, Phone, PhoneOff, Mic, Pause, Play,
-  ArrowRightLeft, Headphones, AlertTriangle, CheckCircle2,
-  Clock, HeartPulse, Activity
+  Search, PhoneOff, Headphones, CheckCircle2, Activity
 } from "lucide-react";
 import { useAgent } from "../context/AgentContext";
 
@@ -32,7 +30,6 @@ interface MonitorCall {
 
 const FIRST_NAMES = ["Rahul", "Priya", "Amit", "Sneha", "Vikram", "Neha", "Arjun", "Anjali", "Suresh", "Meena", "Karan", "Lakshmi"];
 const LAST_NAMES = ["Sharma", "Gupta", "Patel", "Singh", "Joshi", "Nair", "Krishnan", "Mehta", "Iyer", "Rao"];
-const AGENT_TYPES = ["Restaurant Agent", "Loan Agent", "AI Feedback", "Support Agent"];
 const LANGUAGES = ["English", "Hindi", "Tamil", "Telugu", "Marathi", "Gujarati"];
 
 function generateMockPhone() {
