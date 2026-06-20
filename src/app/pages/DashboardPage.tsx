@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { X, TrendingUp, Phone, Clock, CheckCircle, AlertTriangle, Zap, Activity, Search, Download } from "lucide-react";
+import { X, TrendingUp, Phone, CheckCircle, Zap, Activity, Search, Download } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -144,12 +144,10 @@ export function DashboardPage() {
       />
 
       {/* ── KPI Row ─────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
         <KpiCard icon={Phone}         label="Active Calls"       value={metrics ? String(metrics.activeCalls) : "—"}                   iconColor="#50381F" />
         <KpiCard icon={TrendingUp}    label="Today's Calls"      value={metrics ? String(metrics.todayCalls ?? 0) : "—"}               iconColor="#2563EB" />
-        <KpiCard icon={Clock}         label="Avg Duration"        value={metrics ? (metrics.avgDuration ?? "—") : "—"}                  iconColor="#7C3AED" />
         <KpiCard icon={CheckCircle}   label="Resolution Rate"    value={metrics ? `${metrics.resolutionRate ?? 0}%` : "—"}             iconColor="#16A34A" />
-        <KpiCard icon={AlertTriangle} label="Escalations"        value={metrics ? String(metrics.escalationCount ?? 0) : "—"}          iconColor="#DC2626" />
         <KpiCard icon={Zap}           label="Avg Latency"        value={metrics ? `${metrics.avgLatency ?? 0}ms` : "—"}                iconColor="#D97706" />
       </div>
 
