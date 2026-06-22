@@ -145,10 +145,10 @@ export function DashboardPage() {
 
       {/* ── KPI Row ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
-        <KpiCard icon={Phone}         label="Active Calls"       value={metrics ? String(metrics.activeCalls) : "—"}                   iconColor="#50381F" />
-        <KpiCard icon={TrendingUp}    label="Today's Calls"      value={metrics ? String(metrics.todayCalls ?? 0) : "—"}               iconColor="#2563EB" />
+        <KpiCard icon={Phone}         label="Active Calls"       value={metrics ? metrics.activeCalls.toLocaleString() : "—"}                   iconColor="#50381F" />
+        <KpiCard icon={TrendingUp}    label="Today's Calls"      value={metrics ? (metrics.todayCalls ?? 0).toLocaleString() : "—"}               iconColor="#2563EB" />
         <KpiCard icon={CheckCircle}   label="Resolution Rate"    value={metrics ? `${metrics.resolutionRate ?? 0}%` : "—"}             iconColor="#16A34A" />
-        <KpiCard icon={Zap}           label="Avg Latency"        value={metrics ? `${metrics.avgLatency ?? 0}ms` : "—"}                iconColor="#D97706" />
+        <KpiCard icon={Zap}           label="Avg Latency"        value={metrics ? `${(metrics.avgLatency ?? 0).toLocaleString()}ms` : "—"}                iconColor="#D97706" />
       </div>
 
       {/* ── Charts Row 1 ────────────────────────────────────────────────────── */}

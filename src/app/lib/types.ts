@@ -50,13 +50,7 @@ export type ReminderDomain =
   | "banking"
   | "custom";
 
-export type ReminderStatus =
-  | "pending"
-  | "calling"
-  | "completed"
-  | "no-answer"
-  | "rescheduled"
-  | "skipped";
+export type ReminderStatus = "pending" | "calling" | "completed" | "no-answer" | "rescheduled";
 
 export interface ReminderCallHistory {
   id: string;

@@ -92,9 +92,9 @@ function AddMenuItemModal({ onClose, onAdd }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-[460px] mx-4 rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-[460px] bg-white rounded-2xl shadow-2xl flex flex-col max-h-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF] shrink-0">
           <div>
             <h2 className="m-0 text-[15px] font-bold text-[#1E1A14]">Add Menu Item</h2>
             <p className="m-0 mt-0.5 text-[11px] text-[#9E9890]">Add a new item to your menu</p>
@@ -103,10 +103,10 @@ function AddMenuItemModal({ onClose, onAdd }: {
             <X size={16} className="text-[#7A746C]" />
           </button>
         </div>
-        <form onSubmit={submit} className="p-5 flex flex-col gap-3">
-          {error && <div className="bg-[#FEE2E2] border border-[#FECACA] rounded-lg px-3 py-2 text-[12px] text-[#DC2626]">{error}</div>}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5 col-span-2">
+        <form id="add-menu-form" onSubmit={submit} className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+          {error && <div className="bg-[#FEE2E2] border border-[#FECACA] rounded-lg px-3 py-2 text-[12px] text-[#DC2626] shrink-0">{error}</div>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider">Item Name</label>
               <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Chicken Biryani"
                 className="h-10 border border-[#E2DDD5] rounded-lg px-3 text-[13px] outline-none focus:border-[#50381F] bg-white transition-colors" />
@@ -123,22 +123,22 @@ function AddMenuItemModal({ onClose, onAdd }: {
               <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. ₹250"
                 className="h-10 border border-[#E2DDD5] rounded-lg px-3 text-[13px] outline-none focus:border-[#50381F] bg-white transition-colors" />
             </div>
-            <div className="flex flex-col gap-1.5 col-span-2">
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider">Description</label>
               <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short description"
                 className="h-10 border border-[#E2DDD5] rounded-lg px-3 text-[13px] outline-none focus:border-[#50381F] bg-white transition-colors" />
             </div>
-            <div className="flex items-center gap-2 col-span-2">
+            <div className="flex items-center gap-2 sm:col-span-2">
               <input id="avail" type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)}
                 style={{ width: 14, height: 14, accentColor: "#50381F", cursor: "pointer" }} />
               <label htmlFor="avail" className="text-[13px] text-[#1E1A14] cursor-pointer">Available</label>
             </div>
           </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 h-9 rounded-lg border border-[#E2DDD5] bg-white text-[13px] font-medium text-[#1E1A14] cursor-pointer hover:bg-[#F7F4EF] transition-colors">Cancel</button>
-            <button type="submit" className="flex-1 h-9 rounded-lg border-none bg-[#50381F] text-[13px] font-semibold text-white cursor-pointer hover:bg-[#3D2914] transition-colors">Add Item</button>
-          </div>
         </form>
+        <div className="shrink-0 border-t border-[#E2DDD5] px-6 py-4 flex gap-3 bg-[#FDFDFD]">
+          <button type="button" onClick={onClose} className="flex-1 h-9 rounded-lg border border-[#E2DDD5] bg-white text-[13px] font-medium text-[#1E1A14] cursor-pointer hover:bg-[#F7F4EF] transition-colors">Cancel</button>
+          <button type="submit" form="add-menu-form" className="flex-1 h-9 rounded-lg border-none bg-[#50381F] text-[13px] font-semibold text-white cursor-pointer hover:bg-[#3D2914] transition-colors">Add Item</button>
+        </div>
       </div>
     </div>
   );
@@ -215,14 +215,20 @@ function RestaurantCustomize() {
                   <td className="px-3 py-3 hidden sm:table-cell">
                     <span className="text-[11px] font-medium text-[#7A746C] bg-[#F7F4EF] px-2 py-0.5 rounded-md">{item.category}</span>
                   </td>
-                  <td className="px-3 py-3"><span className="text-[13px] font-bold text-[#50381F]">{item.price}</span></td>
+                  <td className="px-3 py-3">
+                    <input
+                      value={item.price}
+                      onChange={(e) => setItems(prev => prev.map(i => i.id === item.id ? { ...i, price: e.target.value } : i))}
+                      className="w-20 text-[13px] font-bold text-[#50381F] bg-transparent border-none outline-none hover:bg-[#F0EDE8] focus:bg-[#F0EDE8] focus:ring-1 focus:ring-[#C9B99E] rounded px-1 py-0.5 transition-colors"
+                    />
+                  </td>
                   <td className="px-3 py-3 hidden md:table-cell"><p className="m-0 text-[12px] text-[#7A746C] max-w-[220px] truncate">{item.description}</p></td>
                   <td className="px-3 py-3 text-center">
                     <button onClick={() => setItems(prev => prev.map(i => i.id === item.id ? { ...i, available: !i.available } : i))}
                       className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full cursor-pointer border-none transition-colors ${
                         item.available ? "bg-[#DCFCE7] text-[#16A34A] hover:bg-[#BBF7D0]" : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB]"
                       }`}>
-                      {item.available ? "Available" : "Unavailable"}
+                      {item.available ? "Available" : "Out of Stock"}
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -306,9 +312,9 @@ function AddContactModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: O
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-[420px] mx-4 rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl flex flex-col max-h-full overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF] shrink-0">
           <div>
             <h2 className="m-0 text-[15px] font-bold text-[#1E1A14]">Add Contact</h2>
             <p className="m-0 mt-0.5 text-[11px] text-[#9E9890]">Add a customer to the feedback call list</p>
@@ -317,8 +323,8 @@ function AddContactModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: O
             <X size={16} className="text-[#7A746C]" />
           </button>
         </div>
-        <form onSubmit={submit} className="p-5 flex flex-col gap-3">
-          {error && <div className="bg-[#FEE2E2] border border-[#FECACA] rounded-lg px-3 py-2 text-[12px] text-[#DC2626]">{error}</div>}
+        <form id="add-contact-form" onSubmit={submit} className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+          {error && <div className="bg-[#FEE2E2] border border-[#FECACA] rounded-lg px-3 py-2 text-[12px] text-[#DC2626] shrink-0">{error}</div>}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider">Full Name</label>
             <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Priya Sharma"
@@ -336,11 +342,11 @@ function AddContactModal({ onClose, onAdd }: { onClose: () => void; onAdd: (c: O
               {["Standard", "Premium", "VIP"].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 h-9 rounded-lg border border-[#E2DDD5] bg-white text-[13px] font-medium cursor-pointer hover:bg-[#F7F4EF] transition-colors">Cancel</button>
-            <button type="submit" className="flex-1 h-9 rounded-lg border-none bg-[#50381F] text-[13px] font-semibold text-white cursor-pointer hover:bg-[#3D2914] transition-colors">Add Contact</button>
-          </div>
         </form>
+        <div className="shrink-0 border-t border-[#E2DDD5] px-6 py-4 flex gap-3 bg-[#FDFDFD]">
+          <button type="button" onClick={onClose} className="flex-1 h-9 rounded-lg border border-[#E2DDD5] bg-white text-[13px] font-medium cursor-pointer hover:bg-[#F7F4EF] transition-colors">Cancel</button>
+          <button type="submit" form="add-contact-form" className="flex-1 h-9 rounded-lg border-none bg-[#50381F] text-[13px] font-semibold text-white cursor-pointer hover:bg-[#3D2914] transition-colors">Add Contact</button>
+        </div>
       </div>
     </div>
   );
@@ -481,7 +487,7 @@ function FeedbackCustomize() {
           ))}
 
           {/* Add question */}
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
             <input value={newQ} onChange={e => setNewQ(e.target.value)} onKeyDown={e => e.key === "Enter" && addQuestion()}
               placeholder="Type a new question and press Add…"
               className="flex-1 h-9 border border-[#E2DDD5] rounded-lg px-3 text-[13px] text-[#1E1A14] outline-none focus:border-[#50381F] bg-white transition-colors" />
@@ -491,7 +497,7 @@ function FeedbackCustomize() {
               <option value="yesno">Yes/No</option>
               <option value="open">Open</option>
             </select>
-            <button onClick={addQuestion} className="flex items-center gap-1 h-9 px-3 rounded-lg border-none bg-[#50381F] text-[12px] font-semibold text-white cursor-pointer hover:bg-[#3D2914] transition-colors whitespace-nowrap">
+            <button onClick={addQuestion} className="flex items-center justify-center gap-1 h-9 px-3 rounded-lg border-none bg-[#50381F] text-[12px] font-semibold text-white cursor-pointer hover:bg-[#3D2914] transition-colors whitespace-nowrap">
               <Plus size={13} /> Add
             </button>
           </div>

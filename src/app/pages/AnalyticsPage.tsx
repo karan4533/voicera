@@ -158,7 +158,7 @@ export function AnalyticsPage() {
             <CardTitle className="text-xs font-semibold text-[#7A746C] uppercase tracking-wider">Escalations</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold text-[#DC2626]">{metrics.escalationCount}</div>
+            <div className="text-2xl font-bold text-[#DC2626]">{metrics.escalationCount.toLocaleString()}</div>
           </CardContent>
         </Card>
         <Card className="shadow-none border-[#E2DDD5] bg-white">
@@ -166,7 +166,7 @@ export function AnalyticsPage() {
             <CardTitle className="text-xs font-semibold text-[#7A746C] uppercase tracking-wider">CSAT Score</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <div className="text-2xl font-bold text-[#1E1A14]">{metrics.csatScore} / 5.0</div>
+            <div className="text-2xl font-bold text-[#1E1A14]">{metrics.csatScore.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5.0</div>
           </CardContent>
         </Card>
       </div>

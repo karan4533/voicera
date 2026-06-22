@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
   Phone, Search, Plus, Upload, X, ChevronDown,
-  CheckCircle2, Clock, PhoneOff, RefreshCw, AlertCircle,
+  CheckCircle2, Clock, PhoneOff, RefreshCw,
   User, MapPin, Tag, FileText, History, Download,
 } from "lucide-react";
 import {
@@ -43,32 +43,29 @@ const DOMAIN_FIELDS: Partial<Record<ReminderDomain, { key: string; label: string
   ],
 };
 
-// Status config — only the 5 workflow states
-const STATUS_STYLES: Record<ReminderStatus, string> = {
+// Status config — only the 4 workflow states
+const STATUS_STYLES: Record<Exclude<ReminderStatus, "skipped">, string> = {
   pending:     "bg-amber-50 text-amber-700 border-amber-200",
   calling:     "bg-green-50 text-green-700 border-green-200",
   completed:   "bg-gray-100 text-gray-500 border-gray-200",
   "no-answer": "bg-orange-50 text-orange-600 border-orange-200",
   rescheduled: "bg-blue-50 text-blue-600 border-blue-200",
-  skipped:     "bg-gray-50 text-gray-400 border-gray-200",
 };
 
-const STATUS_LABELS: Record<ReminderStatus, string> = {
+const STATUS_LABELS: Record<Exclude<ReminderStatus, "skipped">, string> = {
   pending:     "Pending",
   calling:     "In Call",
   completed:   "Completed",
   "no-answer": "No Answer",
   rescheduled: "Rescheduled",
-  skipped:     "Skipped",
 };
 
-const STATUS_ICONS: Record<ReminderStatus, React.ReactNode> = {
+const STATUS_ICONS: Record<Exclude<ReminderStatus, "skipped">, React.ReactNode> = {
   pending:     <Clock size={10} />,
   calling:     <Phone size={10} />,
   completed:   <CheckCircle2 size={10} />,
   "no-answer": <PhoneOff size={10} />,
   rescheduled: <RefreshCw size={10} />,
-  skipped:     <AlertCircle size={10} />,
 };
 
 // ── Helper: format attribute key to label ─────────────────────────────────────
@@ -292,7 +289,6 @@ export function CallRemindersPage() {
               <option value="pending">Pending</option>
               <option value="calling">In Call</option>
               <option value="completed">Completed</option>
-              <option value="skipped">Skipped</option>
               <option value="rescheduled">Rescheduled</option>
             </select>
             <ChevronDown size={12} className="absolute right-2 top-3 text-gray-400 pointer-events-none" />
@@ -382,18 +378,8 @@ export function CallRemindersPage() {
                               <PhoneOff size={11} /> End Call
                             </button>
                           )}
-                          {/* Skip — available for pending / no-answer */}
+                          {/* Reschedule — available for pending / no-answer */}
                           {(c.status === "pending" || c.status === "no-answer") && (
-                            <button
-                              onClick={() => handleStatusUpdate(c.id, "skipped")}
-                              title="Skip"
-                              className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] text-[#EF4444] cursor-pointer hover:bg-[#FEE2E2] transition-colors"
-                            >
-                              <AlertCircle size={11} /> Skip
-                            </button>
-                          )}
-                          {/* Reschedule — available for pending / no-answer / skipped */}
-                          {(c.status === "pending" || c.status === "no-answer" || c.status === "skipped") && (
                             <button
                               onClick={() => handleReschedule(c)}
                               title="Reschedule (+4h)"
@@ -558,7 +544,7 @@ export function CallRemindersPage() {
                 <PhoneOff size={14} /> End Call
               </button>
             )}
-            {(detailContact.status === "pending" || detailContact.status === "no-answer" || detailContact.status === "skipped") && (
+            {(detailContact.status === "pending" || detailContact.status === "no-answer" || detailContact.status === "rescheduled") && (
               <button
                 onClick={() => handleReschedule(detailContact)}
                 className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium py-2 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB] cursor-pointer hover:bg-[#DBEAFE] transition-colors"
