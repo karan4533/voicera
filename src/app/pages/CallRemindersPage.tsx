@@ -244,7 +244,7 @@ export function CallRemindersPage() {
               </button>
               <button
                 onClick={() => setDrawerOpen(true)}
-                className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-2 rounded-lg bg-[#B8946A] text-white border-none cursor-pointer hover:bg-[#A07858] transition-colors"
+                className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-2 rounded-lg bg-[#50381F] text-white border-none cursor-pointer hover:bg-[#3D2914] transition-colors"
               >
                 <Plus size={14} /> Add Customer
               </button>
@@ -276,7 +276,7 @@ export function CallRemindersPage() {
               placeholder="Search name or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+              className="w-full pl-8 pr-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
             />
           </div>
           <div className="relative">
@@ -582,14 +582,14 @@ export function CallRemindersPage() {
                   <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Customer Name *</label>
                   <input required type="text" value={form.name} onChange={(e) => setField("name", e.target.value)}
                     placeholder="John Doe"
-                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
                   />
                 </div>
                 <div>
                   <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Phone Number *</label>
                   <input required type="tel" value={form.phone} onChange={(e) => setField("phone", e.target.value)}
                     placeholder="+91 9999999999"
-                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
                   />
                 </div>
               </div>
@@ -598,13 +598,13 @@ export function CallRemindersPage() {
                   <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Location</label>
                   <input type="text" value={form.location} onChange={(e) => setField("location", e.target.value)}
                     placeholder="City, State"
-                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
                   />
                 </div>
                 <div>
                   <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Scheduled At</label>
                   <input type="datetime-local" value={form.scheduledAt} onChange={(e) => setField("scheduledAt", e.target.value)}
-                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                    className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
                   />
                 </div>
               </div>
@@ -612,14 +612,14 @@ export function CallRemindersPage() {
                 <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Tags (comma separated)</label>
                 <input type="text" value={form.tags} onChange={(e) => setField("tags", e.target.value)}
                   placeholder="VIP, New Lead"
-                  className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                  className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
                 />
               </div>
               <div>
                 <label className="block text-[12px] font-semibold text-[#4A453E] mb-1">Notes</label>
                 <textarea value={form.notes} onChange={(e) => setField("notes", e.target.value)}
                   rows={2} placeholder="Any relevant notes about this customer..."
-                  className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30 resize-none"
+                  className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30 resize-none"
                 />
               </div>
 
@@ -636,7 +636,7 @@ export function CallRemindersPage() {
                           type={f.type}
                           value={(form.attributes[f.key] as string) || ""}
                           onChange={(e) => setAttr(f.key, e.target.value)}
-                          className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B8946A]/30"
+                          className="w-full px-3 py-2 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#50381F]/30"
                         />
                       </div>
                     ))}
@@ -654,7 +654,7 @@ export function CallRemindersPage() {
               <button
                 onClick={handleAddSubmit}
                 disabled={saving || !form.name || !form.phone}
-                className="flex-1 py-2 text-[13px] font-semibold rounded-lg bg-[#B8946A] text-white border-none cursor-pointer hover:bg-[#A07858] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex-1 py-2 text-[13px] font-semibold rounded-lg bg-[#50381F] text-white border-none cursor-pointer hover:bg-[#3D2914] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : "Add Customer"}
               </button>
@@ -684,14 +684,14 @@ export function CallRemindersPage() {
 
             <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
               <div
-                className="border-2 border-dashed border-[#E2DDD5] rounded-xl p-8 text-center cursor-pointer hover:border-[#B8946A] hover:bg-[#FDF8F3] transition-all"
+                className="border-2 border-dashed border-[#E2DDD5] rounded-xl p-8 text-center cursor-pointer hover:border-[#50381F] hover:bg-[#FDF8F3] transition-all"
                 onClick={() => fileRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); }}
               >
                 <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
-                <Upload size={28} className="mx-auto mb-2 text-[#B8946A]" />
+                <Upload size={28} className="mx-auto mb-2 text-[#50381F]" />
                 {importFile ? (
                   <div>
                     <div className="text-[13px] font-semibold text-[#1E1A14]">{importFile.name}</div>
@@ -753,7 +753,7 @@ export function CallRemindersPage() {
               <button
                 onClick={handleImportConfirm}
                 disabled={!importFile || importing}
-                className="flex-1 py-2 text-[13px] font-semibold rounded-lg bg-[#B8946A] text-white border-none cursor-pointer hover:bg-[#A07858] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex-1 py-2 text-[13px] font-semibold rounded-lg bg-[#50381F] text-white border-none cursor-pointer hover:bg-[#3D2914] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {importing ? "Importing…" : `Import ${importPreview.length > 0 ? `(${importPreview.length} rows)` : ""}`}
               </button>
