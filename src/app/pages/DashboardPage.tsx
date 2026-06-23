@@ -144,7 +144,7 @@ export function DashboardPage() {
       />
 
       {/* ── KPI Row ─────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
         <KpiCard icon={Phone}         label="Active Calls"       value={metrics ? metrics.activeCalls.toLocaleString() : "—"}                   iconColor="#50381F" />
         <KpiCard icon={TrendingUp}    label="Today's Calls"      value={metrics ? (metrics.todayCalls ?? 0).toLocaleString() : "—"}               iconColor="#2563EB" />
         <KpiCard icon={CheckCircle}   label="Resolution Rate"    value={metrics ? `${metrics.resolutionRate ?? 0}%` : "—"}             iconColor="#16A34A" />
@@ -216,7 +216,7 @@ export function DashboardPage() {
 
         {/* System Health */}
         <SectionCard title="System Health">
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {[
               { label: "System Status",    value: "Healthy",  color: "#16A34A", bg: "#DCFCE7" },
               { label: "Active Channels",  value: metrics ? String(metrics.activeChannels ?? 10) : "10",  color: "#50381F", bg: "#EDE4D8" },

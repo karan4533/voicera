@@ -143,7 +143,7 @@ export function LiveCallsPage() {
       initial = [scheduled, ...initial];
       setSelectedCallId(scheduled.id);
     } else {
-      setSelectedCallId(initial[0].id);
+      setSelectedCallId(window.innerWidth >= 768 ? initial[0].id : null);
     }
     
     setCalls(initial);

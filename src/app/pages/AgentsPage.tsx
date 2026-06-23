@@ -50,8 +50,8 @@ export function AgentsPage() {
   });
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${detailAgent ? "mr-[400px]" : ""}`}>
+    <div className="flex h-full overflow-hidden relative">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${detailAgent ? "md:mr-[400px]" : ""}`}>
         <div className="shrink-0 mb-5">
           <PageHeader
             title="Agent Administration"
@@ -158,7 +158,7 @@ export function AgentsPage() {
 
       {/* ── Drawer ───────────────────────────────────────────────────────────── */}
       {detailAgent && (
-        <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] max-w-[100vw] bg-white border-l border-[#E2DDD5] shadow-2xl flex flex-col z-30 overflow-hidden transform transition-transform duration-300 translate-x-0">
+        <div className="fixed right-0 top-0 h-full w-full md:w-[400px] max-w-[100vw] bg-white border-l border-[#E2DDD5] shadow-2xl flex flex-col z-30 overflow-hidden transform transition-transform duration-300 translate-x-0">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD5] shrink-0 bg-[#FDFDFD]">
             <div className="flex items-center gap-3">
               <div
