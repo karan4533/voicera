@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router";
 import {
-  Search, PhoneOff, Headphones, CheckCircle2, Activity
+  Search, PhoneOff, Headphones, CheckCircle2, Activity, ChevronLeft
 } from "lucide-react";
 import { useAgent } from "../context/AgentContext";
 
@@ -209,10 +209,10 @@ export function LiveCallsPage() {
   });
 
   return (
-    <div className="flex -m-4 sm:-m-6 lg:-m-7 bg-[#F7F4EF]" style={{ height: "calc(100vh - 56px)" }}>
+    <div className="flex flex-col md:flex-row -m-4 sm:-m-6 lg:-m-7 bg-[#F7F4EF]" style={{ height: "calc(100vh - 56px)" }}>
       
       {/* ── Left Panel (35%): Live Calls List ───────────────────────────── */}
-      <div className="w-[35%] min-w-[320px] max-w-[400px] bg-white border-r border-[#D6CFC4] flex flex-col z-10">
+      <div className={`w-full md:w-[35%] md:min-w-[320px] md:max-w-[400px] bg-white border-r-0 md:border-r border-[#D6CFC4] flex-col z-10 ${selectedCall ? "hidden md:flex" : "flex"}`}>
         
         {/* Header */}
         <div className="p-4 border-b border-[#D6CFC4] bg-[#F7F4EF]">
@@ -283,7 +283,7 @@ export function LiveCallsPage() {
       </div>
 
       {/* ── Right Panel (65%): Transcript Monitor ───────────────────────── */}
-      <div className="flex-1 flex flex-col bg-[#ECE6D9] min-w-0">
+      <div className={`flex-1 flex flex-col bg-[#ECE6D9] min-w-0 ${!selectedCall ? "hidden md:flex" : "flex"}`}>
         
         {selectedCall ? (() => {
           const durationMs = Date.now() - selectedCall.startedAt;
@@ -291,10 +291,17 @@ export function LiveCallsPage() {
           return (
             <>
               {/* Call Insights Panel */}
-              <div className="bg-white px-6 py-4 border-b border-[#D6CFC4] flex items-center justify-between shadow-sm z-10 shrink-0">
-                <div className="flex items-center gap-6">
+              <div className="bg-white px-4 md:px-6 py-4 border-b border-[#D6CFC4] flex items-center justify-between shadow-sm z-10 shrink-0">
+                <div className="flex items-center gap-3 md:gap-6">
+                  {/* Mobile Back Button */}
+                  <button 
+                    onClick={() => setSelectedCallId(null)}
+                    className="md:hidden p-1.5 -ml-2 rounded-lg text-[#7A746C] hover:bg-[#F7F4EF] cursor-pointer"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
                   {/* Avatar */}
-                  <div className="w-12 h-12 rounded-xl bg-[#50381F] text-white flex items-center justify-center font-bold text-lg shadow-inner">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#50381F] text-white flex items-center justify-center font-bold text-base md:text-lg shadow-inner shrink-0">
                     {selectedCall.customerName.split(' ').map(n=>n[0]).join('').slice(0,2)}
                   </div>
                   
