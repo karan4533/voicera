@@ -13,7 +13,7 @@ import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
 const navItems = [
   { icon: Bot,           label: "Agents",               path: "/dashboard/agents" },
-  { icon: LayoutDashboard, label: "Dashboard & Analytics", path: "/dashboard" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Sliders,       label: "Customize Instance",   path: "/dashboard/customize" },
   { icon: BellRing,      label: "Call Scheduler",       path: "/dashboard/call-reminders" },
   { icon: Phone,         label: "Live Calls",           path: "/dashboard/live-calls" },
