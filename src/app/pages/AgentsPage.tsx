@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Utensils, Landmark, ShoppingBag, Headphones, Stethoscope,
   Building2, Shield, Users, CreditCard, Cpu, Bot,
-  Search, X, Globe, Mic, CheckCircle2, ChevronDown
+  Search, X, Globe, Mic, CheckCircle2
 } from "lucide-react";
 import { PageHeader } from "../components/shared/PageHeader";
 import { useAgent } from "../context/AgentContext";
