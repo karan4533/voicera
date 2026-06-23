@@ -291,12 +291,12 @@ export function LiveCallsPage() {
           return (
             <>
               {/* Call Insights Panel */}
-              <div className="bg-white px-4 md:px-6 py-4 border-b border-[#D6CFC4] flex items-center justify-between shadow-sm z-10 shrink-0">
-                <div className="flex items-center gap-3 md:gap-6">
+              <div className="bg-white px-4 md:px-6 py-4 border-b border-[#D6CFC4] flex items-center justify-between shadow-sm z-10 shrink-0 gap-3">
+                <div className="flex items-center gap-3 md:gap-6 min-w-0">
                   {/* Mobile Back Button */}
                   <button 
                     onClick={() => setSelectedCallId(null)}
-                    className="md:hidden p-1.5 -ml-2 rounded-lg text-[#7A746C] hover:bg-[#F7F4EF] cursor-pointer"
+                    className="md:hidden p-1.5 -ml-2 rounded-lg text-[#7A746C] hover:bg-[#F7F4EF] cursor-pointer shrink-0"
                   >
                     <ChevronLeft size={20} />
                   </button>
@@ -305,20 +305,20 @@ export function LiveCallsPage() {
                     {selectedCall.customerName.split(' ').map(n=>n[0]).join('').slice(0,2)}
                   </div>
                   
-                  <div>
-                    <h1 className="text-[18px] font-bold text-[#1E1A16] mb-0.5">{selectedCall.customerName}</h1>
-                    <div className="flex items-center gap-3 text-[12px] text-[#7A746C] font-medium">
-                      <span>{selectedCall.phone}</span>
-                      <span>•</span>
-                      <span>{selectedCall.language}</span>
-                      <span>•</span>
-                      <span className="text-[#50381F] bg-[#F7F4EF] px-2 py-0.5 rounded-md border border-[#E2DDD5]">{selectedCall.agentType}</span>
+                  <div className="min-w-0">
+                    <h1 className="text-[16px] md:text-[18px] font-bold text-[#1E1A16] mb-0.5 truncate">{selectedCall.customerName}</h1>
+                    <div className="flex items-center gap-2 sm:gap-3 text-[11px] md:text-[12px] text-[#7A746C] font-medium">
+                      <span className="truncate">{selectedCall.phone}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">{selectedCall.language}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="text-[#50381F] bg-[#F7F4EF] px-2 py-0.5 rounded-md border border-[#E2DDD5] hidden sm:inline truncate">{selectedCall.agentType}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Live Stats */}
-                <div className="flex items-center gap-6 text-[12px]">
+                <div className="flex items-center gap-6 text-[12px] shrink-0">
                   <div className="flex flex-col items-end">
                     <span className="text-[#7A746C] mb-0.5 uppercase tracking-wider text-[10px] font-bold">Duration</span>
                     <span className="font-mono font-bold text-[14px] text-[#1E1A16]">{formatTimer(durationMs)}</span>
