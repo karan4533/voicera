@@ -21,6 +21,11 @@ import {
 import { auth as firebaseAuth } from "../lib/firebase";
 import { setCachedSession } from "../lib/auth";
 import type { AuthSession } from "../lib/auth";
+import {
+  getRoleFromTokenResult,
+  getOrgIdFromTokenResult,
+  getSubscribedAgents,
+} from "../lib/rbac";
 
 // ── Context shape ─────────────────────────────────────────────────────────────
 // Identical surface to the old mock context — all consumers are unchanged.
@@ -41,30 +46,39 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // ── Helper — map Firebase User → AuthSession ──────────────────────────────────
 
 async function buildSession(user: User): Promise<AuthSession> {
-  const token = await user.getIdToken();
+  // getIdTokenResult() returns the decoded token with custom claims.
+  // We use this as the primary source for role; rbac.ts falls back to email.
+  const tokenResult = await user.getIdTokenResult();
+  const email = user.email ?? "";
+
+  const role    = getRoleFromTokenResult(tokenResult, email);
+  const orgId   = getOrgIdFromTokenResult(tokenResult, email);
+  const subscribedAgents = getSubscribedAgents(orgId);
+
   return {
-    token,
+    token: tokenResult.token,
     user: {
-      email: user.email ?? "",
-      // Prefer the display name set by Google / email provider; fall back to
+      email,
+      // Prefer display name from Google / email provider; fall back to
       // capitalising the local part of the email address.
       name:
         user.displayName ??
-        (user.email
-          ? user.email
+        (email
+          ? email
               .split("@")[0]
               .replace(/[._]/g, " ")
               .replace(/\b\w/g, (c) => c.toUpperCase())
           : "User"),
-      // Default to "admin" — use Firebase Custom Claims for role-based access
-      // in the future.
-      role: "admin",
+      role,
+      orgId,
+      subscribedAgents,
     },
     // Firebase ID tokens are valid for 1 hour; onIdTokenChanged fires on
     // automatic refresh so this cache stays current without any polling.
     expiresAt: Date.now() + 60 * 60 * 1000,
   };
 }
+
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 

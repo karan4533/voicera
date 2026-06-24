@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { useAuth } from "./AuthContext";
 import type { AgentType, AgentDefinition, AgentStatus } from "../lib/types";
 
 const AGENT_KEY = "vocera_selected_agent";
@@ -73,12 +74,34 @@ interface AgentContextValue {
 const AgentContext = createContext<AgentContextValue | null>(null);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+
+  // Filter the visible agent definitions based on the customer's subscription.
+  // If subscribedAgents is undefined (no subscription record / platform admin)
+  // all agent definitions remain visible — backward-compatible default.
+  const visibleDefs = session?.user.subscribedAgents
+    ? defaultAgentDefs.filter((d) => session.user.subscribedAgents!.includes(d.type))
+    : defaultAgentDefs;
+
   const [agent, setAgentState] = useState<AgentType>(() => {
     const stored = sessionStorage.getItem(AGENT_KEY) as AgentType | null;
-    return stored && AGENTS.some((a) => a.id === stored) ? stored : "restaurant";
+    const firstAvailable = visibleDefs[0]?.type ?? "restaurant";
+    return stored && visibleDefs.some((a) => a.type === stored)
+      ? (stored as AgentType)
+      : firstAvailable;
   });
 
-  const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>(defaultAgentDefs);
+  const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>(visibleDefs);
+
+  // Re-sync agentDefs when the session (and thus subscribedAgents) changes.
+  useEffect(() => {
+    setAgentDefs(visibleDefs);
+    // If the currently active agent is no longer in the subscription, reset.
+    if (visibleDefs.length > 0 && !visibleDefs.some((d) => d.type === agent)) {
+      setAgentState(visibleDefs[0].type);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.subscribedAgents?.join(",")]);
 
   const setAgent = useCallback((a: AgentType) => {
     setAgentState(a);

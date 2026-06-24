@@ -5,6 +5,11 @@ import { useAuth } from "../context/AuthContext";
 import { getFriendlyAuthErrorMessage } from "../lib/authErrors";
 import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
+// Helper to get post-login destination from a session role
+function roleHome(role?: string) {
+  return role === "platform_admin" ? "/admin" : "/dashboard";
+}
+
 // ── Brand tokens ───────────────────────────────────────────────────────────────
 const ACCENT   = "#50381F";
 const ACCENT_H = "#3D2914";
@@ -28,7 +33,7 @@ function GoogleIcon() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export function LoginScreen() {
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword, session } = useAuth();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<"login" | "forgot" | "forgot-success">("login");
@@ -49,7 +54,7 @@ export function LoginScreen() {
       await login(email.trim(), password, rememberMe);
       if (rememberMe) localStorage.setItem("remembered_email", email.trim());
       else localStorage.removeItem("remembered_email");
-      navigate("/dashboard", { replace: true });
+      navigate(roleHome(session?.user.role), { replace: true });
     } catch (err) {
       setError(getFriendlyAuthErrorMessage(err));
     } finally {
@@ -81,7 +86,7 @@ export function LoginScreen() {
     setLoading(true);
     try {
       await loginWithGoogle();
-      navigate("/dashboard", { replace: true });
+      navigate(roleHome(session?.user.role), { replace: true });
     } catch (err) {
       setError(getFriendlyAuthErrorMessage(err));
     } finally {

@@ -10,12 +10,29 @@
  * of the current Firebase session. AuthContext keeps them in sync via
  * the onIdTokenChanged listener (fires on sign-in, sign-out, and the
  * automatic ~1 h token refresh).
+ *
+ * ── RBAC Roles ────────────────────────────────────────────────────────────────
+ *  platform_admin  — Voicera platform owner; manages accounts & subscriptions,
+ *                    no access to customer business data.
+ *  customer_admin  — Tenant power user; full access to their org's purchased
+ *                    agents and all associated data.
+ *  customer_user   — Tenant limited user; permissions scoped by Customer Admin
+ *                    (scaffolded now, fully enforced in a future phase).
+ *
+ * In production, `role` comes from Firebase Custom Claims set server-side.
+ * During the demo/MVP phase it is derived client-side in rbac.ts.
  */
+
+export type UserRole = "platform_admin" | "customer_admin" | "customer_user";
 
 export interface AuthUser {
   email: string;
   name: string;
-  role: "admin" | "operator";
+  role: UserRole;
+  /** Tenant / organisation identifier — undefined for platform admins */
+  orgId?: string;
+  /** Agent type IDs the org has purchased — undefined means all (legacy / platform admin) */
+  subscribedAgents?: string[];
 }
 
 export interface AuthSession {

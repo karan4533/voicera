@@ -9,6 +9,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            as string,
@@ -19,6 +20,11 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID             as string,
 };
 
-// Guard against re-initialisation during Vite HMR
-export const app  = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase exactly once
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Firebase Auth
 export const auth = getAuth(app);
+
+// Initialize Firebase Functions
+export const functions = getFunctions(app);
