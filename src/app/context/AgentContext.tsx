@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import type { AgentType, AgentDefinition, AgentStatus } from "../lib/types";
 
@@ -19,45 +19,77 @@ export const AGENT_TYPES: { id: AgentType; label: string; category: string; icon
   { id: "custom",           label: "Custom Agent",           category: "Enterprise",       icon: "Cpu",            color: "#50381F", description: "Fully configurable agent for any business domain" },
 ];
 
-// ── Active deployed agents (mock initial state) ────────────────────────────────
+// ── Active deployed agents (displayed in sidebar agent switcher) ───────────────
 
 export const AGENTS: { id: AgentType; label: string }[] = [
   { id: "restaurant", label: "Restaurant Ordering" },
   { id: "loan",       label: "AI Feedback" },
 ];
 
-// ── Default agent definitions ──────────────────────────────────────────────────
+// ── Rich mock stats for the two pre-seeded demo agents ────────────────────────
+//
+// These give the demo orgs realistic performance numbers. Any other agent type
+// that a new customer subscribes to starts with zeroed stats and "draft" status
+// — the correct enterprise onboarding state before the agent is configured.
 
-const defaultAgentDefs: AgentDefinition[] = [
-  {
-    id: "agent-restaurant-1",
+const SEEDED_AGENT_DEFS: Record<string, Omit<AgentDefinition, "id" | "type" | "category" | "icon" | "color" | "description">> = {
+  restaurant: {
     name: "Restaurant Ordering",
-    type: "restaurant",
-    category: "Food & Beverage",
-    description: "Handles inbound order calls, table reservations, and delivery queries for the restaurant.",
-    icon: "Utensils",
-    color: "#16A34A",
     status: "active",
     stats: { callsToday: 48, resolutionRate: 94, avgDuration: "02:48" },
     tone: "Friendly & Warm",
     languages: ["English", "Hindi", "Tamil"],
     createdAt: "Jun 1, 2026",
   },
-  {
-    id: "agent-loan-1",
+  loan: {
     name: "AI Feedback",
-    type: "loan",
-    category: "Finance",
-    description: "Follows up on overdue EMIs, collects payment commitments, and avoids escalation.",
-    icon: "Landmark",
-    color: "#2563EB",
     status: "active",
     stats: { callsToday: 21, resolutionRate: 78, avgDuration: "06:10" },
     tone: "Professional & Empathetic",
     languages: ["English", "Hindi", "Gujarati"],
     createdAt: "Jun 5, 2026",
   },
-];
+};
+
+// ── Agent Definition Builder ──────────────────────────────────────────────────
+//
+// Derives a full AgentDefinition[] from the customer's subscribedAgents list.
+// For each subscribed agent type:
+//   - If it has a seeded definition (the 2 demo agents), use that with rich stats.
+//   - Otherwise, synthesise a fresh definition from the AGENT_TYPES catalog with
+//     "draft" status and zero stats — the correct state for a newly provisioned agent.
+//
+// When subscribedAgents is undefined (platform_admin), returns definitions for
+// ALL agent types (unchanged behaviour).
+
+function buildAgentDefs(subscribedAgents: AgentType[] | undefined): AgentDefinition[] {
+  const typesToBuild: AgentType[] = subscribedAgents ?? AGENT_TYPES.map((a) => a.id as AgentType);
+
+  const now = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  return typesToBuild.reduce<AgentDefinition[]>((acc, agentType) => {
+    const catalog = AGENT_TYPES.find((a) => a.id === agentType);
+    if (!catalog) return acc;
+
+    const seeded = SEEDED_AGENT_DEFS[agentType];
+
+    acc.push({
+      id:          seeded ? `agent-${agentType}-1` : `agent-${agentType}-new`,
+      type:        agentType,
+      name:        seeded?.name        ?? catalog.label,
+      category:    catalog.category,
+      description: catalog.description,
+      icon:        catalog.icon,
+      color:       catalog.color,
+      status:      (seeded?.status     ?? "draft") as AgentStatus,
+      stats:       seeded?.stats       ?? { callsToday: 0, resolutionRate: 0, avgDuration: "00:00" },
+      tone:        seeded?.tone,
+      languages:   seeded?.languages,
+      createdAt:   seeded?.createdAt   ?? now,
+    });
+    return acc;
+  }, []);
+}
 
 // ── Context ────────────────────────────────────────────────────────────────────
 
@@ -76,38 +108,48 @@ const AgentContext = createContext<AgentContextValue | null>(null);
 export function AgentProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
 
-  // Filter the visible agent definitions based on the customer's subscription.
-  // If subscribedAgents is undefined (no subscription record / platform admin)
-  // all agent definitions remain visible — backward-compatible default.
-  const visibleDefs = session?.user.subscribedAgents
-    ? defaultAgentDefs.filter((d) => session.user.subscribedAgents!.includes(d.type))
-    : defaultAgentDefs;
+  // Memoised so buildAgentDefs only re-runs when subscribedAgents actually changes,
+  // not on every parent re-render.
+  const subscribedKey = session?.user.subscribedAgents?.join(",");
+  const initialDefs = useMemo(
+    () => buildAgentDefs(session?.user.subscribedAgents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [subscribedKey],
+  );
 
   const [agent, setAgentState] = useState<AgentType>(() => {
     const stored = sessionStorage.getItem(AGENT_KEY) as AgentType | null;
-    const firstAvailable = visibleDefs[0]?.type ?? "restaurant";
-    return stored && visibleDefs.some((a) => a.type === stored)
-      ? (stored as AgentType)
-      : firstAvailable;
+    const defs = buildAgentDefs(undefined); // build all to find first on cold start
+    const firstAvailable = defs[0]?.type ?? "restaurant";
+    return stored ? (stored as AgentType) : firstAvailable;
   });
 
-  const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>(visibleDefs);
+  const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>(() =>
+    buildAgentDefs(undefined), // start with all; useEffect below narrows once session loads
+  );
 
-  // Re-sync agentDefs when the session (and thus subscribedAgents) changes.
+  // Re-build agentDefs whenever the session's subscribedAgents list changes.
+  // This fires after login (when Firestore subscription is resolved), and again
+  // if the admin updates the customer's subscription without them logging out.
   useEffect(() => {
-    setAgentDefs(visibleDefs);
-    // If the currently active agent is no longer in the subscription, reset.
-    if (visibleDefs.length > 0 && !visibleDefs.some((d) => d.type === agent)) {
-      setAgentState(visibleDefs[0].type);
+    setAgentDefs(initialDefs);
+
+    // If the currently active agent is no longer in the subscription, reset to first.
+    if (initialDefs.length > 0 && !initialDefs.some((d) => d.type === agent)) {
+      const first = initialDefs[0].type;
+      setAgentState(first);
+      sessionStorage.setItem(AGENT_KEY, first);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.subscribedAgents?.join(",")]);
+  }, [initialDefs]);
 
   const setAgent = useCallback((a: AgentType) => {
     setAgentState(a);
     sessionStorage.setItem(AGENT_KEY, a);
   }, []);
 
+  // Allows adding a brand-new custom agent definition at runtime (e.g. from the
+  // Custom Agent builder flow). Not used in the admin provisioning path.
   const addAgentDef = useCallback((def: Omit<AgentDefinition, "id" | "createdAt" | "stats">) => {
     const newDef: AgentDefinition = {
       ...def,
@@ -138,7 +180,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const agentLabel = AGENTS.find((a) => a.id === agent)?.label ?? "Restaurant Ordering";
+  const agentLabel =
+    AGENTS.find((a) => a.id === agent)?.label ??
+    agentDefs.find((d) => d.type === agent)?.name ??
+    "Agent";
 
   return (
     <AgentContext.Provider value={{ agent, agentLabel, setAgent, agentDefs, addAgentDef, updateAgentStatus, cloneAgent }}>

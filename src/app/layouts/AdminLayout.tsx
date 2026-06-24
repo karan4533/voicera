@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router";
 import {
-  LayoutDashboard, Users, Package, BarChart2,
+  LayoutDashboard, Users, Package,
   Activity, LogOut, X, Menu, Shield, HelpCircle, Bell,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -13,7 +13,6 @@ const adminNavItems = [
   { icon: LayoutDashboard, label: "Overview",           path: "/admin" },
   { icon: Users,           label: "Customer Accounts",  path: "/admin/customers" },
   { icon: Package,         label: "Subscriptions",      path: "/admin/subscriptions" },
-  { icon: BarChart2,       label: "Platform Analytics", path: "/admin/analytics" },
   { icon: Activity,        label: "System Health",      path: "/admin/system-health" },
 ];
 

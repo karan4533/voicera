@@ -21,10 +21,12 @@ import {
 import { auth as firebaseAuth } from "../lib/firebase";
 import { setCachedSession } from "../lib/auth";
 import type { AuthSession } from "../lib/auth";
+import type { AgentType } from "../lib/types";
 import {
   getRoleFromTokenResult,
   getOrgIdFromTokenResult,
   getSubscribedAgents,
+  getSubscribedAgentsFromFirestore,
 } from "../lib/rbac";
 
 // ── Context shape ─────────────────────────────────────────────────────────────
@@ -51,9 +53,29 @@ async function buildSession(user: User): Promise<AuthSession> {
   const tokenResult = await user.getIdTokenResult();
   const email = user.email ?? "";
 
-  const role    = getRoleFromTokenResult(tokenResult, email);
-  const orgId   = getOrgIdFromTokenResult(tokenResult, email);
-  const subscribedAgents = getSubscribedAgents(orgId);
+  const role  = getRoleFromTokenResult(tokenResult, email);
+  const orgId = getOrgIdFromTokenResult(tokenResult, email);
+
+  // ── Subscription resolution (two-step) ──────────────────────────────────────
+  // 1. Try Firestore — the source of truth for all accounts created via the
+  //    Platform Admin console. The `createCustomerAccount` Cloud Function
+  //    writes `organizations/{orgId}.subscribedAgents` on account creation.
+  // 2. Fall back to the static demo seed map for the 6 pre-seeded orgs whose
+  //    orgIds are email-derived and have no Firestore record.
+  let subscribedAgents: AgentType[] | undefined;
+  if (role === "platform_admin") {
+    // Platform admins have no tenant and see all agents globally
+    subscribedAgents = undefined;
+  } else if (orgId) {
+    subscribedAgents = await getSubscribedAgentsFromFirestore(orgId);
+    // If Firestore returned nothing, check the demo seed map. If that also fails,
+    // default to empty array (0 agents) rather than undefined (which would show all agents).
+    if (!subscribedAgents) {
+      subscribedAgents = getSubscribedAgents(orgId) ?? [];
+    }
+  } else {
+    subscribedAgents = [];
+  }
 
   return {
     token: tokenResult.token,

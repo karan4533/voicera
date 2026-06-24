@@ -23,6 +23,8 @@
  * During the demo/MVP phase it is derived client-side in rbac.ts.
  */
 
+import type { AgentType } from "./types";
+
 export type UserRole = "platform_admin" | "customer_admin" | "customer_user";
 
 export interface AuthUser {
@@ -32,7 +34,7 @@ export interface AuthUser {
   /** Tenant / organisation identifier — undefined for platform admins */
   orgId?: string;
   /** Agent type IDs the org has purchased — undefined means all (legacy / platform admin) */
-  subscribedAgents?: string[];
+  subscribedAgents?: AgentType[];
 }
 
 export interface AuthSession {

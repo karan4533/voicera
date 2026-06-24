@@ -9,15 +9,19 @@
  *  Centralises what each role can do so guard components never hard-code role
  *  strings — they call `hasPermission(role, "capability")` instead.
  *
- * ── Agent Subscriptions (mock) ────────────────────────────────────────────────
- *  `getSubscribedAgents(orgId)` returns which agent types a tenant has
- *  purchased. In production replace the mock map with a Firestore read from
- *  `organizations/{orgId}/subscription.agents`.
+ * ── Agent Subscriptions ───────────────────────────────────────────────────────
+ *  `getSubscribedAgentsFromFirestore(orgId)` reads from:
+ *    Firestore: organizations/{orgId}.subscribedAgents
+ *  This is written by the `createCustomerAccount` Cloud Function.
+ *  The sync `getSubscribedAgents` fallback is kept only for the 6 demo orgs
+ *  that use email-derived orgIds (no Firestore record).
  */
 
 import type { UserRole } from "./auth";
 import type { AgentType } from "./types";
 import type { IdTokenResult } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
 // ── Platform Admin email list (MVP/demo seed) ─────────────────────────────────
 // Add / remove platform admin emails here. These are only used when Firebase
@@ -123,14 +127,14 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
   return PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
-// ── Agent Subscription Mock ────────────────────────────────────────────────────
-//
-// Maps orgId → purchased agent types.
-// Replace with a Firestore read in production:
-//   const snap = await getDoc(doc(db, "organizations", orgId));
-//   return snap.data()?.subscribedAgents ?? [];
+// ── Agent Subscriptions ────────────────────────────────────────────────────────
 
-const ORG_SUBSCRIPTIONS: Record<string, AgentType[]> = {
+/**
+ * Demo seed map — only used for orgs whose orgId was derived from their email
+ * domain (the 6 pre-existing demo accounts). New accounts created via the
+ * Platform Admin console get their subscriptions from Firestore instead.
+ */
+const DEMO_ORG_SUBSCRIPTIONS: Record<string, AgentType[]> = {
   "org-example-com":       ["restaurant", "loan"],
   "org-restaurant-co-in":  ["restaurant"],
   "org-finance-corp-com":  ["loan", "banking"],
@@ -140,13 +144,41 @@ const ORG_SUBSCRIPTIONS: Record<string, AgentType[]> = {
 };
 
 /**
- * Returns the agent types a given org has subscribed to.
- * Returns `undefined` if no subscription record exists (shows all agents — safe
- * default for new / unregistered orgs during demo).
+ * Sync fallback — resolves agent subscriptions for the 6 seeded demo orgs
+ * whose orgIds are email-derived (no Firestore record). Returns `undefined`
+ * for unknown orgs so the async Firestore path takes over.
  */
 export function getSubscribedAgents(orgId: string | undefined): AgentType[] | undefined {
   if (!orgId) return undefined;
-  return ORG_SUBSCRIPTIONS[orgId];
+  return DEMO_ORG_SUBSCRIPTIONS[orgId]; // undefined → caller should use Firestore
+}
+
+/**
+ * PRIMARY path (production) — reads `organizations/{orgId}.subscribedAgents`
+ * from Firestore. This document is written by the `createCustomerAccount`
+ * Cloud Function when Platform Admin creates a new tenant.
+ *
+ * Returns:
+ *  - `AgentType[]`  — list of subscribed agent types for this org
+ *  - `undefined`    — org not found in Firestore (falls through to demo seed)
+ */
+export async function getSubscribedAgentsFromFirestore(
+  orgId: string
+): Promise<AgentType[] | undefined> {
+  try {
+    const snap = await getDoc(doc(db, "organizations", orgId));
+    if (!snap.exists()) return undefined;
+    const data = snap.data();
+    const agents = data?.subscribedAgents;
+    if (Array.isArray(agents) && agents.length > 0) {
+      return agents as AgentType[];
+    }
+    return undefined;
+  } catch (err) {
+    // Network / permission error — degrade gracefully
+    console.warn("[rbac] Firestore subscription fetch failed, using demo fallback", err);
+    return undefined;
+  }
 }
 
 // ── Mock Organisation Catalog (for Admin Console) ─────────────────────────────

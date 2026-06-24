@@ -4,6 +4,53 @@ import {
   TrendingUp, AlertCircle, ArrowUpRight, Activity,
 } from "lucide-react";
 import { MOCK_ORGANISATIONS } from "../../lib/rbac";
+import { AGENT_TYPES } from "../../context/AgentContext";
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from "recharts";
+
+// ── Chart data ─────────────────────────────────────────────────────────────────
+
+const PLATFORM_VOLUME = [
+  { month: "Jan", calls: 4200, resolved: 3780 },
+  { month: "Feb", calls: 5800, resolved: 5220 },
+  { month: "Mar", calls: 7200, resolved: 6480 },
+  { month: "Apr", calls: 8900, resolved: 8010 },
+  { month: "May", calls: 11400, resolved: 10260 },
+  { month: "Jun", calls: 14800, resolved: 13320 },
+];
+
+const PLATFORM_SENTIMENT = [
+  { month: "Jan", score: 71 },
+  { month: "Feb", score: 73 },
+  { month: "Mar", score: 75 },
+  { month: "Apr", score: 77 },
+  { month: "May", score: 79 },
+  { month: "Jun", score: 82 },
+];
+
+const agentUsage = AGENT_TYPES.slice(0, 6).map((at) => ({
+  name: at.label.replace(" Agent", ""),
+  orgs: MOCK_ORGANISATIONS.filter((o) => o.subscribedAgents.includes(at.id as never)).length,
+  color: at.color,
+}));
+
+const PIE_COLORS = ["#50381F", "#6B645B", "#4CAF50", "#F4B400", "#D9534F", "#8B7355"];
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name?: string; color?: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E7DFC8", borderRadius: 8, padding: "8px 12px", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
+      <p style={{ margin: "0 0 4px", fontWeight: 600, color: "#1E1A16" }}>{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} style={{ margin: 0, color: p.color || "#50381F" }}>
+          {p.name ? `${p.name}: ` : ""}<strong>{p.value}</strong>
+        </p>
+      ))}
+    </div>
+  );
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +173,105 @@ export function AdminOverviewPage() {
         />
       </div>
 
+      {/* Charts row 1 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        {/* Volume */}
+        <div className="bg-[#FFFFFF] rounded-xl border overflow-hidden" style={{ borderColor: "#E7DFC8" }}>
+          <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: "#E7DFC8" }}>
+            <Phone size={14} color="#50381F" />
+            <h2 className="text-[14px] font-bold m-0" style={{ color: "#1E1A16" }}>Call Volume — Last 6 Months</h2>
+          </div>
+          <div className="p-5">
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={PLATFORM_VOLUME} barSize={18} barCategoryGap="35%">
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B645B" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#6B645B" }} axisLine={false} tickLine={false} width={36} />
+                <RechartsTooltip content={<ChartTooltip />} />
+                <Bar dataKey="calls"    name="Total"    fill="#ECE6D9" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="resolved" name="Resolved" fill="#50381F" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex items-center gap-4 mt-2">
+              <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "#6B645B" }}><span className="h-2.5 w-2.5 rounded-sm bg-[#ECE6D9] inline-block" /> Total</span>
+              <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "#6B645B" }}><span className="h-2.5 w-2.5 rounded-sm bg-[#50381F] inline-block" /> Resolved</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sentiment */}
+        <div className="bg-[#FFFFFF] rounded-xl border overflow-hidden" style={{ borderColor: "#E7DFC8" }}>
+          <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: "#E7DFC8" }}>
+            <TrendingUp size={14} color="#4CAF50" />
+            <h2 className="text-[14px] font-bold m-0" style={{ color: "#1E1A16" }}>Sentiment Trend</h2>
+          </div>
+          <div className="p-5">
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={PLATFORM_SENTIMENT}>
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B645B" }} axisLine={false} tickLine={false} />
+                <YAxis domain={[60, 100]} tick={{ fontSize: 11, fill: "#6B645B" }} axisLine={false} tickLine={false} width={28} />
+                <RechartsTooltip content={<ChartTooltip />} />
+                <Line type="monotone" dataKey="score" name="Sentiment %" stroke="#4CAF50" strokeWidth={2.5} dot={{ fill: "#4CAF50", r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-[11px]" style={{ color: "#6B645B" }}>Positive sentiment score (%)</span>
+              <span className="text-[12px] font-bold" style={{ color: "#4CAF50" }}>↑ +11% vs Jan</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts row 2 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        {/* Agent usage */}
+        <div className="bg-[#FFFFFF] rounded-xl border overflow-hidden" style={{ borderColor: "#E7DFC8" }}>
+          <div className="px-5 py-4 border-b" style={{ borderColor: "#E7DFC8" }}>
+            <h2 className="text-[14px] font-bold m-0" style={{ color: "#1E1A16" }}>Agent Usage by Tenants</h2>
+          </div>
+          <div className="p-5 flex flex-col gap-3">
+            {agentUsage.map((au) => (
+              <div key={au.name} className="flex items-center gap-3">
+                <span className="text-[12px] w-28 shrink-0 font-medium" style={{ color: "#6B645B" }}>{au.name}</span>
+                <div className="flex-1 rounded-full h-2 overflow-hidden" style={{ backgroundColor: "#F7F4EF" }}>
+                  <div
+                    className="h-2 rounded-full transition-all duration-700"
+                    style={{ width: `${(au.orgs / MOCK_ORGANISATIONS.length) * 100}%`, backgroundColor: au.color }}
+                  />
+                </div>
+                <span className="text-[12px] font-bold w-8 text-right" style={{ color: "#1E1A16" }}>{au.orgs}</span>
+                <span className="text-[11px] w-12 text-right" style={{ color: "#6B645B" }}>
+                  {Math.round((au.orgs / MOCK_ORGANISATIONS.length) * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top tenants by calls */}
+        <div className="bg-[#FFFFFF] rounded-xl border overflow-hidden" style={{ borderColor: "#E7DFC8" }}>
+          <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: "#E7DFC8" }}>
+            <Users size={14} color="#50381F" />
+            <h2 className="text-[14px] font-bold m-0" style={{ color: "#1E1A16" }}>Top Tenants by Call Volume</h2>
+          </div>
+          <div className="p-5">
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={MOCK_ORGANISATIONS.map((o, i) => ({ name: o.name.split(" ")[0], value: o.totalCalls, fill: PIE_COLORS[i % PIE_COLORS.length] }))}
+                  cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false} fontSize={10}
+                >
+                  {MOCK_ORGANISATIONS.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip formatter={(v: number) => [v.toLocaleString(), "Calls"]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
       {/* Two-column section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
@@ -193,18 +339,46 @@ export function AdminOverviewPage() {
         <div className="px-5 py-4 border-b" style={{ borderColor: "#E7DFC8" }}>
           <h2 className="text-[14px] font-bold m-0" style={{ color: "#1E1A16" }}>Subscription Plan Distribution</h2>
         </div>
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { plan: "Starter",    count: MOCK_ORGANISATIONS.filter(o => o.plan === "Starter").length,    color: "#50381F", desc: "Up to 2 agents, 1K calls/mo" },
-            { plan: "Growth",     count: MOCK_ORGANISATIONS.filter(o => o.plan === "Growth").length,     color: "#6B645B", desc: "Up to 5 agents, 10K calls/mo" },
-            { plan: "Enterprise", count: MOCK_ORGANISATIONS.filter(o => o.plan === "Enterprise").length, color: "#4CAF50", desc: "Unlimited agents & calls" },
-          ].map((item) => (
-            <div key={item.plan} className="rounded-xl border p-4 text-center" style={{ borderColor: "#E7DFC8" }}>
-              <div className="text-[2rem] font-bold mb-1" style={{ color: item.color }}>{item.count}</div>
-              <div className="text-[13px] font-bold mb-1" style={{ color: "#1E1A16" }}>{item.plan}</div>
-              <div className="text-[11px]" style={{ color: "#6B645B" }}>{item.desc}</div>
-            </div>
-          ))}
+        <div className="p-5">
+          {/* Stacked Progress Bar */}
+          <div className="flex h-4 rounded-full overflow-hidden mb-6" style={{ backgroundColor: "#F7F4EF" }}>
+            {[
+              { plan: "Starter", count: MOCK_ORGANISATIONS.filter(o => o.plan === "Starter").length, color: "#50381F" },
+              { plan: "Growth", count: MOCK_ORGANISATIONS.filter(o => o.plan === "Growth").length, color: "#6B645B" },
+              { plan: "Enterprise", count: MOCK_ORGANISATIONS.filter(o => o.plan === "Enterprise").length, color: "#4CAF50" },
+            ].map((item, idx) => {
+              const width = (item.count / MOCK_ORGANISATIONS.length) * 100;
+              return width > 0 ? (
+                <div 
+                  key={item.plan}
+                  className="h-full transition-all duration-700"
+                  style={{ width: `${width}%`, backgroundColor: item.color, borderRight: idx < 2 ? '2px solid #FFFFFF' : 'none' }}
+                  title={`${item.plan}: ${item.count} tenants`}
+                />
+              ) : null;
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              { plan: "Starter",    count: MOCK_ORGANISATIONS.filter(o => o.plan === "Starter").length,    color: "#50381F", desc: "Up to 2 agents, 1K calls/mo" },
+              { plan: "Growth",     count: MOCK_ORGANISATIONS.filter(o => o.plan === "Growth").length,     color: "#6B645B", desc: "Up to 5 agents, 10K calls/mo" },
+              { plan: "Enterprise", count: MOCK_ORGANISATIONS.filter(o => o.plan === "Enterprise").length, color: "#4CAF50", desc: "Unlimited agents & calls" },
+            ].map((item) => (
+              <div key={item.plan} className="flex gap-3 items-start p-3 rounded-lg border border-transparent hover:border-[#E7DFC8] hover:bg-[#FDFBFA] transition-all">
+                <div className="h-3 w-3 rounded-sm mt-1 shrink-0" style={{ backgroundColor: item.color }} />
+                <div>
+                  <div className="text-[14px] font-bold mb-0.5 flex items-center gap-2" style={{ color: "#1E1A16" }}>
+                    {item.plan} 
+                    <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
+                      {item.count} tenants
+                    </span>
+                  </div>
+                  <div className="text-[12px] font-medium leading-relaxed mt-1" style={{ color: "#50381F" }}>{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </>
