@@ -7,6 +7,8 @@ import { MOCK_ORGANISATIONS, type MockOrganisation } from "../../lib/rbac";
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
 import { CreateAccountModal } from "./CreateAccountModal";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 // ── Agent checkbox in the assignment modal ─────────────────────────────────────
 
@@ -57,6 +59,7 @@ function AssignModal({
   const [selected, setSelected] = useState<Set<AgentType>>(
     new Set(org.subscribedAgents)
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   const toggle = (id: AgentType, val: boolean) => {
     setSelected((prev) => {
@@ -64,6 +67,29 @@ function AssignModal({
       val ? next.add(id) : next.delete(id);
       return next;
     });
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const orgRef = doc(db, "organizations", org.id);
+      
+      // We pass the full array of selected agents to ensure unchecked agents are removed
+      const newAgentsList = Array.from(selected);
+      
+      await updateDoc(orgRef, {
+        subscribedAgents: newAgentsList
+      });
+      
+      // Update local state for immediate feedback in the UI
+      org.subscribedAgents = newAgentsList;
+      onClose();
+    } catch (err) {
+      console.error("Failed to update subscriptions", err);
+      alert("Failed to save changes. Please check permissions.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -111,11 +137,12 @@ function AssignModal({
               Cancel
             </button>
             <button
-              onClick={onClose}
-              className="h-9 px-4 rounded-lg border-none text-[13px] font-bold text-white cursor-pointer transition-colors"
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`h-9 px-4 rounded-lg border-none text-[13px] font-bold text-white cursor-pointer transition-colors ${isSaving ? 'opacity-70' : ''}`}
               style={{ backgroundColor: "#50381F" }}
             >
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>

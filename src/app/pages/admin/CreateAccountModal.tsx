@@ -6,8 +6,10 @@ import {
 import { type MockOrganisation } from "../../lib/rbac";
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
-import { functions } from "../../lib/firebase";
-import { httpsCallable } from "firebase/functions";
+import { app, db } from "../../lib/firebase";
+import { initializeApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 type CreateStep = "form" | "agents" | "confirm" | "success";
 
@@ -50,19 +52,35 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
     setCreationError(null);
     setIsCreating(true);
     try {
-      const createCustomerAccount = httpsCallable(functions, "createCustomerAccount");
-      await createCustomerAccount({
+      // 1. Generate fallback orgId based on email domain
+      // This matches the fallback logic in rbac.ts so the user is assigned to this org when they log in
+      const domain = email.trim().split("@")[1] ?? "unknown";
+      const orgId = `org-${domain.replace(/\./g, "-")}`;
+
+      // 2. Create the user with a secondary Firebase app so we don't log out the current admin
+      const secondaryApp = initializeApp(app.options, "SecondaryApp" + Date.now());
+      const secondaryAuth = getAuth(secondaryApp);
+      const userCred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
+      await secondaryAuth.signOut(); // cleanup
+
+      // 3. Save organization data to Firestore using the primary admin's permissions
+      const orgRef = doc(db, "organizations", orgId);
+      await setDoc(orgRef, {
         orgName,
         contactName,
         email: email.trim(),
-        password,
         plan,
-        agents: Array.from(selectedAgents),
+        status: "active",
+        subscribedAgents: Array.from(selectedAgents),
+        totalCalls: 0,
+        createdAt: serverTimestamp(),
+        ownerUid: userCred.user.uid,
       });
+
       setStep("success");
     } catch (err: any) {
       console.error("Account creation failed:", err);
-      setCreationError(err.message || "Failed to create account. Ensure you are a Platform Admin.");
+      setCreationError(err.message || "Failed to create account.");
     } finally {
       setIsCreating(false);
     }
