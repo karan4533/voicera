@@ -179,6 +179,42 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleSendEmail = () => {
+    const agentList = Array.from(selectedAgents)
+      .map((id) => {
+        const def = AGENT_TYPES.find((a) => a.id === id);
+        return def ? `  • ${def.label}` : `  • ${id}`;
+      })
+      .join("\n");
+
+    const subject = encodeURIComponent(`Welcome to Voicera – Your Account is Ready, ${contactName}!`);
+    const body = encodeURIComponent(
+`Hi ${contactName},
+
+Great news! Your Voicera workspace has been set up and is ready to use. 🎉
+
+You have successfully purchased the following AI agents:
+${agentList}
+
+──────────────────────────
+Your Login Credentials
+──────────────────────────
+Login URL  : https://voicera.ai/login
+Email      : ${email}
+Password   : ${password}
+──────────────────────────
+
+Simply go to the login URL above and sign in with your credentials. Your agents will be available in your dashboard right away.
+
+If you have any questions, feel free to reply to this email.
+
+Welcome aboard!
+The Voicera Team`
+    );
+
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  };
+
   const steps = ["Account Details", "Assign Agents", "Review & Create"];
   const stepIndex = step === "form" ? 0 : step === "agents" ? 1 : step === "confirm" ? 2 : 3;
 
@@ -525,7 +561,7 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
                 <Copy size={13} /> Copy Credentials
               </button>
               <button
-                onClick={() => {}}
+                onClick={handleSendEmail}
                 className="flex-1 h-10 rounded-lg border-none text-[13px] font-bold text-white cursor-pointer transition-colors flex items-center justify-center gap-2"
                 style={{ backgroundColor: "#50381F" }}
               >
