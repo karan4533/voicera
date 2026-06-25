@@ -127,8 +127,8 @@ export function AdminOverviewPage() {
     <>
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-[22px] font-bold m-0" style={{ color: "#1E1A16" }}>Platform Overview</h1>
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <h1 className="text-[20px] sm:text-[22px] font-bold m-0" style={{ color: "#1E1A16" }}>Platform Overview</h1>
           <span className="text-[11px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "#ECE6D9", color: "#50381F" }}>
             Admin Console
           </span>

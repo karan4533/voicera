@@ -71,7 +71,7 @@ function OrgDrawer({
   isUpdating: boolean;
 }) {
   return (
-    <div className="fixed right-0 top-0 h-full w-full md:w-[420px] max-w-[100vw] bg-[#FFFFFF] border-l flex flex-col z-30 overflow-hidden shadow-2xl" style={{ borderColor: "#E7DFC8" }}>
+    <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 md:h-full md:w-[420px] max-w-full bg-[#FFFFFF] border-t md:border-t-0 md:border-l flex flex-col z-30 overflow-hidden shadow-2xl" style={{ borderColor: "#E7DFC8" }}>
       <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: "#E7DFC8", backgroundColor: "#F7F4EF" }}>
         <div>
           <div className="font-bold text-[16px]" style={{ color: "#1E1A16" }}>{org.name}</div>
@@ -248,20 +248,20 @@ export function CustomerAccountsPage() {
         <div className="mb-4 shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-[22px] font-bold m-0 mb-1" style={{ color: "#1E1A16" }}>Customer Accounts</h1>
+              <h1 className="text-[20px] sm:text-[22px] font-bold m-0 mb-1" style={{ color: "#1E1A16" }}>Customer Accounts</h1>
               <p className="text-[13px] m-0" style={{ color: "#6B645B" }}>
                 {!loading && !loadError && (
                   <><strong style={{ color: "#1E1A16" }}>{orgs.length}</strong> registered organisations — </>
                 )}
-                click <strong style={{ color: "#1E1A16" }}>&quot;New Account&quot;</strong> to create a customer and set their login credentials
+                <span className="hidden sm:inline">click <strong style={{ color: "#1E1A16" }}>&quot;New Account&quot;</strong> to create a customer</span>
               </p>
             </div>
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 h-9 px-4 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none transition-colors shadow-sm"
+              className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none transition-colors shadow-sm shrink-0"
               style={{ backgroundColor: "#50381F" }}
             >
-              <Plus size={14} /> New Account
+              <Plus size={14} /> <span className="hidden sm:inline">New Account</span><span className="sm:hidden">New</span>
             </button>
           </div>
         </div>
@@ -301,14 +301,56 @@ export function CustomerAccountsPage() {
             <span className="text-[13px]">Loading accounts…</span>
           </div>
         ) : (
-          <div className="flex-1 overflow-auto rounded-xl border shadow-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#E7DFC8" }}>
+          {/* Mobile card list */}
+          <div className="block md:hidden">
+            {filtered.length === 0 ? (
+              <div className="text-center py-16" style={{ color: "#6B645B" }}>
+                <Users size={36} className="mx-auto mb-3 opacity-30" />
+                <p className="text-[14px] font-bold">No accounts found</p>
+                <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
+                  + Create first customer account
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: "#E7DFC8" }}>
+                {filtered.map((org) => (
+                  <div
+                    key={org.id}
+                    onClick={() => setSelectedOrg(org)}
+                    className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-[#F7F4EF]"
+                    style={{ backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[14px] truncate" style={{ color: "#1E1A16" }}>{org.name}</div>
+                      <div className="text-[12px] truncate mt-0.5" style={{ color: "#6B645B" }}>{org.email}</div>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        <StatusBadge status={org.status} />
+                        <PlanBadge plan={org.plan} />
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</div>
+                      <div className="text-[10px]" style={{ color: "#6B645B" }}>calls</div>
+                      <div className="flex flex-wrap gap-1 mt-1 justify-end">
+                        {org.subscribedAgents.slice(0, 2).map((a) => <AgentPill key={a} agentId={a} />)}
+                        {org.subscribedAgents.length > 2 && <span className="text-[10px] font-bold" style={{ color: "#6B645B" }}>+{org.subscribedAgents.length - 2}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead className="sticky top-0 z-10" style={{ backgroundColor: "#F7F4EF" }}>
                 <tr className="border-b" style={{ borderColor: "#E7DFC8" }}>
                   <th className="text-left text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Organisation</th>
                   <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Login Email</th>
                   <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Plan</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Agents Access</th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Agents</th>
                   <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Status</th>
                   <th className="text-right text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Calls</th>
                   <th className="px-4 py-3" />
