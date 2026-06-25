@@ -82,9 +82,9 @@ export function DashboardLayout() {
   const sidebar = (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 pt-6 pb-5">
-        <img src={heuristicLabsLogo} alt="Voicera" className="h-[28px] w-[28px] object-contain shrink-0" />
-        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 16, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+      <div className="flex items-center gap-3 px-5 pt-6 pb-5">
+        <img src={heuristicLabsLogo} alt="Voicera" className="h-[38px] w-[38px] object-contain shrink-0" />
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
           Voicera
         </span>
         <button

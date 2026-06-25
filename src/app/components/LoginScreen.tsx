@@ -85,9 +85,9 @@ export function LoginScreen() {
         <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 60%)" }} />
 
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "32px 40px" }}>
-          <img src={heuristicLabsLogo} alt="Heuristic Labs" style={{ width: 36, height: 36, objectFit: "contain" }} />
-          <span style={{ fontWeight: 600, fontSize: 16, color: "rgba(255,255,255,0.9)", letterSpacing: "-0.01em" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "32px 40px" }}>
+          <img src={heuristicLabsLogo} alt="Heuristic Labs" style={{ width: 48, height: 48, objectFit: "contain" }} />
+          <span style={{ fontWeight: 700, fontSize: 20, color: "rgba(255,255,255,0.9)", letterSpacing: "-0.01em" }}>
             Heuristic Labs
           </span>
         </div>
@@ -126,8 +126,8 @@ export function LoginScreen() {
 
         {/* Mobile branding */}
         <div className="lg:hidden flex flex-col items-center gap-3 mb-10">
-          <img src={heuristicLabsLogo} alt="Heuristic Labs" style={{ width: 40, height: 40, objectFit: "contain" }} />
-          <h1 style={{ margin: 0, fontSize: 36, fontWeight: 800, color: TEXT, letterSpacing: "-0.03em" }}>Voicera</h1>
+          <img src={heuristicLabsLogo} alt="Heuristic Labs" style={{ width: 56, height: 56, objectFit: "contain" }} />
+          <h1 style={{ margin: 0, fontSize: 44, fontWeight: 800, color: TEXT, letterSpacing: "-0.03em" }}>Voicera</h1>
         </div>
 
         {/* Form card */}
