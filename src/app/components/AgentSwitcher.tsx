@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, Bot } from "lucide-react";
+import { useAgent } from "../context/AgentContext";
+import type { AgentType } from "../lib/types";
+
+export function AgentSwitcher() {
   const { agent, setAgent, agentDefs } = useAgent();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
