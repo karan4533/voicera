@@ -301,111 +301,114 @@ export function CustomerAccountsPage() {
             <span className="text-[13px]">Loading accounts…</span>
           </div>
         ) : (
-          {/* Mobile card list */}
-          <div className="block md:hidden">
-            {filtered.length === 0 ? (
-              <div className="text-center py-16" style={{ color: "#6B645B" }}>
-                <Users size={36} className="mx-auto mb-3 opacity-30" />
-                <p className="text-[14px] font-bold">No accounts found</p>
-                <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
-                  + Create first customer account
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y" style={{ borderColor: "#E7DFC8" }}>
-                {filtered.map((org) => (
-                  <div
-                    key={org.id}
-                    onClick={() => setSelectedOrg(org)}
-                    className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-[#F7F4EF]"
-                    style={{ backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-[14px] truncate" style={{ color: "#1E1A16" }}>{org.name}</div>
-                      <div className="text-[12px] truncate mt-0.5" style={{ color: "#6B645B" }}>{org.email}</div>
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        <StatusBadge status={org.status} />
-                        <PlanBadge plan={org.plan} />
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</div>
-                      <div className="text-[10px]" style={{ color: "#6B645B" }}>calls</div>
-                      <div className="flex flex-wrap gap-1 mt-1 justify-end">
-                        {org.subscribedAgents.slice(0, 2).map((a) => <AgentPill key={a} agentId={a} />)}
-                        {org.subscribedAgents.length > 2 && <span className="text-[10px] font-bold" style={{ color: "#6B645B" }}>+{org.subscribedAgents.length - 2}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
-              <thead className="sticky top-0 z-10" style={{ backgroundColor: "#F7F4EF" }}>
-                <tr className="border-b" style={{ borderColor: "#E7DFC8" }}>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Organisation</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Login Email</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Plan</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Agents</th>
-                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Status</th>
-                  <th className="text-right text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Calls</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-16" style={{ color: "#6B645B" }}>
-                      <Users size={36} className="mx-auto mb-3 opacity-30" />
-                      <p className="text-[14px] font-bold">No accounts found</p>
-                      <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
-                        + Create first customer account
-                      </button>
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((org) => (
-                    <tr
+          <>
+            {/* Mobile card list */}
+            <div className="block md:hidden">
+              {filtered.length === 0 ? (
+                <div className="text-center py-16" style={{ color: "#6B645B" }}>
+                  <Users size={36} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-[14px] font-bold">No accounts found</p>
+                  <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
+                    + Create first customer account
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y" style={{ borderColor: "#E7DFC8" }}>
+                  {filtered.map((org) => (
+                    <div
                       key={org.id}
                       onClick={() => setSelectedOrg(org)}
-                      className="transition-colors cursor-pointer border-b last:border-0 hover:bg-[#F7F4EF]/50"
-                      style={{ borderColor: "#E7DFC8", backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
+                      className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-[#F7F4EF]"
+                      style={{ backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
                     >
-                      <td className="px-5 py-3.5">
-                        <div className="font-bold" style={{ color: "#1E1A16" }}>{org.name}</div>
-                        <div className="text-[11px] mt-0.5" style={{ color: "#6B645B" }}>{org.contactName}</div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-mono text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.email}</div>
-                        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#50381F" }}>Customer Admin</div>
-                      </td>
-                      <td className="px-4 py-3.5"><PlanBadge plan={org.plan} /></td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-wrap gap-1">
-                          {org.subscribedAgents.map((a) => <AgentPill key={a} agentId={a} />)}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-[14px] truncate" style={{ color: "#1E1A16" }}>{org.name}</div>
+                        <div className="text-[12px] truncate mt-0.5" style={{ color: "#6B645B" }}>{org.email}</div>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          <StatusBadge status={org.status} />
+                          <PlanBadge plan={org.plan} />
                         </div>
-                      </td>
-                      <td className="px-4 py-3.5"><StatusBadge status={org.status} /></td>
-                      <td className="px-5 py-3.5 text-right font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</td>
-                      <td className="px-4 py-3.5">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedOrg(org); }}
-                          className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-[#E7DFC8] transition-colors cursor-pointer border-none bg-transparent"
-                        >
-                          <MoreVertical size={15} style={{ color: "#6B645B" }} />
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</div>
+                        <div className="text-[10px]" style={{ color: "#6B645B" }}>calls</div>
+                        <div className="flex flex-wrap gap-1 mt-1 justify-end">
+                          {org.subscribedAgents.slice(0, 2).map((a) => <AgentPill key={a} agentId={a} />)}
+                          {org.subscribedAgents.length > 2 && <span className="text-[10px] font-bold" style={{ color: "#6B645B" }}>+{org.subscribedAgents.length - 2}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <thead className="sticky top-0 z-10" style={{ backgroundColor: "#F7F4EF" }}>
+                  <tr className="border-b" style={{ borderColor: "#E7DFC8" }}>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Organisation</th>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Login Email</th>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Plan</th>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Agents</th>
+                    <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Status</th>
+                    <th className="text-right text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Calls</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-16" style={{ color: "#6B645B" }}>
+                        <Users size={36} className="mx-auto mb-3 opacity-30" />
+                        <p className="text-[14px] font-bold">No accounts found</p>
+                        <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
+                          + Create first customer account
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    filtered.map((org) => (
+                      <tr
+                        key={org.id}
+                        onClick={() => setSelectedOrg(org)}
+                        className="transition-colors cursor-pointer border-b last:border-0 hover:bg-[#F7F4EF]/50"
+                        style={{ borderColor: "#E7DFC8", backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="font-bold" style={{ color: "#1E1A16" }}>{org.name}</div>
+                          <div className="text-[11px] mt-0.5" style={{ color: "#6B645B" }}>{org.contactName}</div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="font-mono text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.email}</div>
+                          <div className="text-[10px] font-bold mt-0.5" style={{ color: "#50381F" }}>Customer Admin</div>
+                        </td>
+                        <td className="px-4 py-3.5"><PlanBadge plan={org.plan} /></td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex flex-wrap gap-1">
+                            {org.subscribedAgents.map((a) => <AgentPill key={a} agentId={a} />)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5"><StatusBadge status={org.status} /></td>
+                        <td className="px-5 py-3.5 text-right font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</td>
+                        <td className="px-4 py-3.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedOrg(org); }}
+                            className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-[#E7DFC8] transition-colors cursor-pointer border-none bg-transparent"
+                          >
+                            <MoreVertical size={15} style={{ color: "#6B645B" }} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
+
       </div>
 
       {selectedOrg && (
