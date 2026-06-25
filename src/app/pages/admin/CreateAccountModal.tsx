@@ -6,10 +6,14 @@ import {
 import { type MockOrganisation } from "../../lib/rbac";
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
-import { app, db } from "../../lib/firebase";
-import { initializeApp } from "firebase/app";
+import { app, db, functions } from "../../lib/firebase";
+import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import {
+  doc, setDoc, updateDoc, getDoc, getDocs, arrayUnion,
+  collection, query, where, serverTimestamp,
+} from "firebase/firestore";
 
 type CreateStep = "form" | "agents" | "confirm" | "success";
 
@@ -28,6 +32,7 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [creationError, setCreationError] = useState<string | null>(null);
+  const [wasExistingAccount, setWasExistingAccount] = useState(false);
 
   const toggleAgent = (id: AgentType) => {
     setSelectedAgents((prev) => {
@@ -48,39 +53,124 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
     return Object.keys(e).length === 0;
   };
 
+  const resolveOrgId = async (normalizedEmail: string): Promise<string> => {
+    const domain = normalizedEmail.split("@")[1] ?? "unknown";
+    const domainOrgId = `org-${domain.replace(/\./g, "-")}`;
+
+    const domainSnap = await getDoc(doc(db, "organizations", domainOrgId));
+    if (domainSnap.exists()) return domainOrgId;
+
+    const emailQuery = query(
+      collection(db, "organizations"),
+      where("email", "==", normalizedEmail),
+    );
+    const emailMatches = await getDocs(emailQuery);
+    if (!emailMatches.empty) return emailMatches.docs[0].id;
+
+    return domainOrgId;
+  };
+
+  const saveOrganization = async (
+    orgId: string,
+    agents: AgentType[],
+    ownerUid?: string,
+  ) => {
+    const normalizedEmail = email.trim();
+    const orgRef = doc(db, "organizations", orgId);
+    const orgSnap = await getDoc(orgRef);
+    const baseFields = {
+      orgName,
+      contactName,
+      email: normalizedEmail,
+      plan,
+      status: "active" as const,
+    };
+
+    if (orgSnap.exists()) {
+      await updateDoc(orgRef, {
+        ...baseFields,
+        subscribedAgents: arrayUnion(...agents),
+        ...(ownerUid ? { ownerUid } : {}),
+      });
+    } else {
+      await setDoc(orgRef, {
+        ...baseFields,
+        subscribedAgents: agents,
+        totalCalls: 0,
+        createdAt: serverTimestamp(),
+        ownerUid: ownerUid ?? "",
+      });
+    }
+  };
+
+  const createViaCloudFunction = async (agents: AgentType[]) => {
+    const createCustomerAccount = httpsCallable(functions, "createCustomerAccount");
+    const result = await createCustomerAccount({
+      email: email.trim(),
+      password,
+      orgName,
+      contactName,
+      plan,
+      agents,
+    });
+    const data = result.data as { existingUser?: boolean };
+    setWasExistingAccount(!!data.existingUser);
+  };
+
+  const createViaClient = async (agents: AgentType[]) => {
+    const normalizedEmail = email.trim();
+    const orgId = await resolveOrgId(normalizedEmail);
+    let secondaryApp: FirebaseApp | null = null;
+
+    try {
+      secondaryApp = initializeApp(app.options, "SecondaryApp" + Date.now());
+      const secondaryAuth = getAuth(secondaryApp);
+      const userCred = await createUserWithEmailAndPassword(
+        secondaryAuth, normalizedEmail, password,
+      );
+      await secondaryAuth.signOut();
+      await saveOrganization(orgId, agents, userCred.user.uid);
+      setWasExistingAccount(false);
+    } catch (err: unknown) {
+      const authErr = err as { code?: string };
+      if (authErr.code === "auth/email-already-in-use") {
+        // Auth user already exists — update org subscription only
+        await saveOrganization(orgId, agents);
+        setWasExistingAccount(true);
+        return;
+      }
+      throw err;
+    } finally {
+      if (secondaryApp) await deleteApp(secondaryApp).catch(() => {});
+    }
+  };
+
   const handleCreateAccount = async () => {
     setCreationError(null);
     setIsCreating(true);
     try {
-      // 1. Generate fallback orgId based on email domain
-      // This matches the fallback logic in rbac.ts so the user is assigned to this org when they log in
-      const domain = email.trim().split("@")[1] ?? "unknown";
-      const orgId = `org-${domain.replace(/\./g, "-")}`;
+      const agents = Array.from(selectedAgents);
 
-      // 2. Create the user with a secondary Firebase app so we don't log out the current admin
-      const secondaryApp = initializeApp(app.options, "SecondaryApp" + Date.now());
-      const secondaryAuth = getAuth(secondaryApp);
-      const userCred = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
-      await secondaryAuth.signOut(); // cleanup
-
-      // 3. Save organization data to Firestore using the primary admin's permissions
-      const orgRef = doc(db, "organizations", orgId);
-      await setDoc(orgRef, {
-        orgName,
-        contactName,
-        email: email.trim(),
-        plan,
-        status: "active",
-        subscribedAgents: Array.from(selectedAgents),
-        totalCalls: 0,
-        createdAt: serverTimestamp(),
-        ownerUid: userCred.user.uid,
-      });
+      try {
+        await createViaCloudFunction(agents);
+      } catch (cloudErr) {
+        console.warn("Cloud function unavailable, falling back to client creation:", cloudErr);
+        await createViaClient(agents);
+      }
 
       setStep("success");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Account creation failed:", err);
-      setCreationError(err.message || "Failed to create account.");
+      const fbErr = err as { code?: string; message?: string };
+      if (fbErr.code === "auth/email-already-in-use") {
+        setCreationError(
+          "This email is already registered. The subscription could not be updated — try Manage Agent Access on the Subscriptions page.",
+        );
+      } else if (fbErr.code === "functions/aborted" && fbErr.message) {
+        setCreationError(fbErr.message);
+      } else {
+        setCreationError(fbErr.message || "Failed to create account.");
+      }
     } finally {
       setIsCreating(false);
     }
@@ -382,9 +472,19 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
             <div className="h-16 w-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: "#4CAF5022" }}>
               <CheckCircle2 size={32} style={{ color: "#4CAF50" }} />
             </div>
-            <h2 className="text-[20px] font-bold mb-2" style={{ color: "#1E1A16" }}>Account Created!</h2>
+            <h2 className="text-[20px] font-bold mb-2" style={{ color: "#1E1A16" }}>
+              {wasExistingAccount ? "Subscription Updated!" : "Account Created!"}
+            </h2>
             <p className="text-[13px] mb-6 max-w-xs" style={{ color: "#6B645B" }}>
-              <strong style={{ color: "#1E1A16" }}>{orgName}</strong> can now log in to their dedicated workspace.
+              {wasExistingAccount ? (
+                <>
+                  <strong style={{ color: "#1E1A16" }}>{orgName}</strong> already had an account — the selected agents have been added to their subscription.
+                </>
+              ) : (
+                <>
+                  <strong style={{ color: "#1E1A16" }}>{orgName}</strong> can now log in to their dedicated workspace.
+                </>
+              )}
             </p>
 
             <div className="w-full rounded-xl border p-4 mb-4 text-left" style={{ backgroundColor: "#F7F4EF", borderColor: "#E7DFC8" }}>

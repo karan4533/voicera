@@ -7,7 +7,7 @@ import { MOCK_ORGANISATIONS, type MockOrganisation } from "../../lib/rbac";
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
 import { CreateAccountModal } from "./CreateAccountModal";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 // ── Agent checkbox in the assignment modal ─────────────────────────────────────
@@ -73,15 +73,22 @@ function AssignModal({
     setIsSaving(true);
     try {
       const orgRef = doc(db, "organizations", org.id);
-      
-      // We pass the full array of selected agents to ensure unchecked agents are removed
+      const original = new Set(org.subscribedAgents);
+      const added = Array.from(selected).filter((a) => !original.has(a));
+      const removed = org.subscribedAgents.filter((a) => !selected.has(a));
+
+      if (removed.length > 0) {
+        await updateDoc(orgRef, {
+          subscribedAgents: arrayRemove(...removed),
+        });
+      }
+      if (added.length > 0) {
+        await updateDoc(orgRef, {
+          subscribedAgents: arrayUnion(...added),
+        });
+      }
+
       const newAgentsList = Array.from(selected);
-      
-      await updateDoc(orgRef, {
-        subscribedAgents: newAgentsList
-      });
-      
-      // Update local state for immediate feedback in the UI
       org.subscribedAgents = newAgentsList;
       onClose();
     } catch (err) {

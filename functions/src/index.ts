@@ -48,44 +48,85 @@ export const createCustomerAccount = functions.https.onCall(async (data, context
     );
   }
 
-  try {
-    // 3. Create the user in Firebase Auth
-    const userRecord = await admin.auth().createUser({
-      email: email,
-      password: password,
-      displayName: contactName,
-    });
+  const normalizedEmail = email.trim().toLowerCase();
+  const agentList: string[] = agents || [];
 
-    // 4. Generate an Organization ID
-    // E.g. "org-spicegarden" from "Spice Garden"
-    const safeOrgName = orgName.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const orgId = `org-${safeOrgName}-${Date.now().toString().slice(-4)}`;
+  try {
+    // 3. Create or look up the user in Firebase Auth
+    let userRecord: admin.auth.UserRecord;
+    let existingUser = false;
+
+    try {
+      userRecord = await admin.auth().getUserByEmail(normalizedEmail);
+      existingUser = true;
+      await admin.auth().updateUser(userRecord.uid, {
+        password,
+        displayName: contactName,
+      });
+    } catch (authErr: any) {
+      if (authErr.code !== "auth/user-not-found") throw authErr;
+      userRecord = await admin.auth().createUser({
+        email: normalizedEmail,
+        password,
+        displayName: contactName,
+      });
+    }
+
+    // 4. Resolve organisation — prefer existing doc by ownerUid, then email, then domain slug
+    const orgCollection = admin.firestore().collection("organizations");
+    const byOwner = await orgCollection
+      .where("ownerUid", "==", userRecord.uid)
+      .limit(1)
+      .get();
+    const byEmail = byOwner.empty
+      ? await orgCollection.where("email", "==", normalizedEmail).limit(1).get()
+      : byOwner;
+
+    const domain = normalizedEmail.split("@")[1] ?? "unknown";
+    const domainOrgId = `org-${domain.replace(/\./g, "-")}`;
+
+    let orgId: string;
+    const orgFields = {
+      orgName,
+      contactName,
+      email: normalizedEmail,
+      plan: plan || "Starter",
+      status: "active",
+      ownerUid: userRecord.uid,
+    };
+
+    if (!byEmail.empty) {
+      orgId = byEmail.docs[0].id;
+      await orgCollection.doc(orgId).update({
+        ...orgFields,
+        ...(agentList.length > 0
+          ? { subscribedAgents: admin.firestore.FieldValue.arrayUnion(...agentList) }
+          : {}),
+      });
+    } else {
+      orgId = domainOrgId;
+      await orgCollection.doc(orgId).set({
+        ...orgFields,
+        subscribedAgents: agentList,
+        totalCalls: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
 
     // 5. Set Custom Claims for RBAC
     await admin.auth().setCustomUserClaims(userRecord.uid, {
       role: "customer_admin",
-      orgId: orgId,
-    });
-
-    // 6. Save Organization config to Firestore
-    // This allows the frontend's AgentContext to query what agents this org has.
-    await admin.firestore().collection("organizations").doc(orgId).set({
-      orgName: orgName,
-      contactName: contactName,
-      email: email,
-      plan: plan || "Starter",
-      status: "active",
-      subscribedAgents: agents || [],
-      totalCalls: 0,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      ownerUid: userRecord.uid,
+      orgId,
     });
 
     return {
       success: true,
+      existingUser,
       uid: userRecord.uid,
-      orgId: orgId,
-      message: `Successfully created ${orgName} with ${agents?.length || 0} agents.`
+      orgId,
+      message: existingUser
+        ? `Updated ${orgName} — added ${agentList.length} agent(s) to existing account.`
+        : `Successfully created ${orgName} with ${agentList.length} agent(s).`,
     };
   } catch (error: any) {
     console.error("Error creating customer account:", error);
