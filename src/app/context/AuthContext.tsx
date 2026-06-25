@@ -27,6 +27,7 @@ import {
   getOrgIdFromTokenResult,
   getSubscribedAgents,
   getOrgFromFirestore,
+  getOrgByEmailFromFirestore,
 } from "../lib/rbac";
 
 // ── Context shape ─────────────────────────────────────────────────────────────
@@ -68,7 +69,13 @@ async function buildSession(user: User): Promise<AuthSession> {
     subscribedAgents = undefined;
     orgStatus = undefined;
   } else if (orgId) {
-    const org = await getOrgFromFirestore(orgId);
+    let org = await getOrgFromFirestore(orgId);
+    if (!org && email) {
+      const byEmail = await getOrgByEmailFromFirestore(email);
+      if (byEmail) {
+        org = { subscribedAgents: byEmail.subscribedAgents, status: byEmail.status };
+      }
+    }
     if (org) {
       subscribedAgents = org.subscribedAgents;
       orgStatus = org.status;

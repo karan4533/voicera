@@ -3,7 +3,7 @@ import {
   UserPlus, Check, AlertCircle, Building2, Mail, EyeOff, Eye, Package,
   CheckCircle2, Copy, Send, X
 } from "lucide-react";
-import { type MockOrganisation } from "../../lib/rbac";
+import { type MockOrganisation, orgIdFromOwnerUid } from "../../lib/rbac";
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
 import { app, db, functions } from "../../lib/firebase";
@@ -11,8 +11,8 @@ import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import {
-  doc, setDoc, updateDoc, arrayUnion,
-  serverTimestamp,
+  doc, setDoc, updateDoc,
+  serverTimestamp, collection, query, where, getDocs, limit,
 } from "firebase/firestore";
 
 type CreateStep = "form" | "agents" | "confirm" | "success";
@@ -53,17 +53,12 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
     return Object.keys(e).length === 0;
   };
 
-  const orgIdFromEmail = (normalizedEmail: string): string => {
-    const domain = normalizedEmail.split("@")[1] ?? "unknown";
-    return `org-${domain.replace(/\./g, "-")}`;
-  };
-
   const saveOrganization = async (
     orgId: string,
     agents: AgentType[],
     ownerUid?: string,
   ) => {
-    const normalizedEmail = email.trim();
+    const normalizedEmail = email.trim().toLowerCase();
     const orgRef = doc(db, "organizations", orgId);
     const baseFields = {
       orgName,
@@ -71,25 +66,34 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
       email: normalizedEmail,
       plan,
       status: "active" as const,
+      subscribedAgents: agents,
+      ...(ownerUid ? { ownerUid } : {}),
     };
 
     try {
-      await updateDoc(orgRef, {
-        ...baseFields,
-        subscribedAgents: arrayUnion(...agents),
-        ...(ownerUid ? { ownerUid } : {}),
-      });
+      await updateDoc(orgRef, baseFields);
     } catch (err: unknown) {
       const fsErr = err as { code?: string };
       if (fsErr.code !== "not-found") throw err;
       await setDoc(orgRef, {
         ...baseFields,
-        subscribedAgents: agents,
         totalCalls: 0,
         createdAt: serverTimestamp(),
         ownerUid: ownerUid ?? "",
       });
     }
+  };
+
+  const resolveOrgIdForExistingEmail = async (normalizedEmail: string): Promise<string> => {
+    const snap = await getDocs(
+      query(
+        collection(db, "organizations"),
+        where("email", "==", normalizedEmail),
+        limit(1),
+      ),
+    );
+    if (!snap.empty) return snap.docs[0].id;
+    throw new Error("No organisation found for this email.");
   };
 
   const createViaCloudFunction = async (agents: AgentType[]) => {
@@ -107,8 +111,7 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
   };
 
   const createViaClient = async (agents: AgentType[]) => {
-    const normalizedEmail = email.trim();
-    const orgId = orgIdFromEmail(normalizedEmail);
+    const normalizedEmail = email.trim().toLowerCase();
     let secondaryApp: FirebaseApp | null = null;
 
     try {
@@ -118,12 +121,13 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
         secondaryAuth, normalizedEmail, password,
       );
       await secondaryAuth.signOut();
+      const orgId = orgIdFromOwnerUid(userCred.user.uid);
       await saveOrganization(orgId, agents, userCred.user.uid);
       setWasExistingAccount(false);
     } catch (err: unknown) {
       const authErr = err as { code?: string };
       if (authErr.code === "auth/email-already-in-use") {
-        // Auth user already exists — update org subscription only
+        const orgId = await resolveOrgIdForExistingEmail(normalizedEmail);
         await saveOrganization(orgId, agents);
         setWasExistingAccount(true);
         return;
@@ -511,7 +515,7 @@ The Voicera Team`
             <p className="text-[13px] mb-6 max-w-xs" style={{ color: "#6B645B" }}>
               {wasExistingAccount ? (
                 <>
-                  <strong style={{ color: "#1E1A16" }}>{orgName}</strong> already had an account — the selected agents have been added to their subscription.
+                  <strong style={{ color: "#1E1A16" }}>{orgName}</strong> already had an account — their agent access has been updated to your selection.
                 </>
               ) : (
                 <>

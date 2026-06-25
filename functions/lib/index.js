@@ -101,9 +101,8 @@ exports.createCustomerAccount = functions.https.onCall(async (data, context) => 
         const byEmail = byOwner.empty
             ? await orgCollection.where("email", "==", normalizedEmail).limit(1).get()
             : byOwner;
-        const domain = normalizedEmail.split("@")[1] ?? "unknown";
-        const domainOrgId = `org-${domain.replace(/\./g, "-")}`;
-        let orgId;
+        // One org per Auth user — never key by email domain (collides across tenants).
+        const orgId = !byEmail.empty ? byEmail.docs[0].id : `org-${userRecord.uid}`;
         const orgFields = {
             orgName,
             contactName,
@@ -111,21 +110,14 @@ exports.createCustomerAccount = functions.https.onCall(async (data, context) => 
             plan: plan || "Starter",
             status: "active",
             ownerUid: userRecord.uid,
+            subscribedAgents: agentList,
         };
         if (!byEmail.empty) {
-            orgId = byEmail.docs[0].id;
-            await orgCollection.doc(orgId).update({
-                ...orgFields,
-                ...(agentList.length > 0
-                    ? { subscribedAgents: admin.firestore.FieldValue.arrayUnion(...agentList) }
-                    : {}),
-            });
+            await orgCollection.doc(orgId).update(orgFields);
         }
         else {
-            orgId = domainOrgId;
             await orgCollection.doc(orgId).set({
                 ...orgFields,
-                subscribedAgents: agentList,
                 totalCalls: 0,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
@@ -141,7 +133,7 @@ exports.createCustomerAccount = functions.https.onCall(async (data, context) => 
             uid: userRecord.uid,
             orgId,
             message: existingUser
-                ? `Updated ${orgName} — added ${agentList.length} agent(s) to existing account.`
+                ? `Updated ${orgName} — assigned ${agentList.length} agent(s).`
                 : `Successfully created ${orgName} with ${agentList.length} agent(s).`,
         };
     }

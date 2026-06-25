@@ -20,7 +20,7 @@
 import type { UserRole } from "./auth";
 import type { AgentType } from "./types";
 import type { IdTokenResult } from "firebase/auth";
-import { doc, getDoc, collection, getDocs, Timestamp } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, limit, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
 // ── Platform Admin email list (MVP/demo seed) ─────────────────────────────────
@@ -65,7 +65,14 @@ export function getRoleFromTokenResult(
 }
 
 /**
- * Derives orgId from custom claims. Falls back to a slug of the email domain.
+ * Stable org document id for a Firebase Auth user — one org per account.
+ */
+export function orgIdFromOwnerUid(uid: string): string {
+  return `org-${uid}`;
+}
+
+/**
+ * Derives orgId from custom claims. Falls back to uid- or email-based slug.
  */
 export function getOrgIdFromTokenResult(
   tokenResult: IdTokenResult,
@@ -78,9 +85,13 @@ export function getOrgIdFromTokenResult(
   const role = getRoleFromTokenResult(tokenResult, email);
   if (role === "platform_admin") return undefined;
 
-  // Derive a stable slug from the email domain for demo purposes
-  const domain = email.split("@")[1] ?? "unknown";
-  return `org-${domain.replace(/\./g, "-")}`;
+  // Prefer uid when available (matches createCustomerAccount org ids)
+  const uid = (tokenResult.claims["sub"] ?? tokenResult.claims["user_id"]) as string | undefined;
+  if (uid) return orgIdFromOwnerUid(uid);
+
+  // Legacy demo fallback: slug from full email (not domain — avoids collisions)
+  const normalized = email.trim().toLowerCase();
+  return `org-${normalized.replace(/@/g, "-at-").replace(/\./g, "-")}`;
 }
 
 // ── Permission Capability Matrix ───────────────────────────────────────────────
@@ -169,11 +180,40 @@ export async function getOrgFromFirestore(
     const agents = data?.subscribedAgents;
     const status = VALID_STATUSES.includes(data?.status) ? data.status : "active";
     return {
-      subscribedAgents: Array.isArray(agents) ? (agents as AgentType[]) : [],
+      subscribedAgents: Array.isArray(agents)
+        ? [...new Set(agents as AgentType[])]
+        : [],
       status,
     };
   } catch (err) {
     console.warn("[rbac] Firestore org fetch failed, using demo fallback", err);
+    return undefined;
+  }
+}
+
+/** Finds an org by customer login email (fallback when token orgId is stale). */
+export async function getOrgByEmailFromFirestore(
+  email: string
+): Promise<{ orgId: string; subscribedAgents: AgentType[]; status: MockOrganisation["status"] } | undefined> {
+  try {
+    const normalized = email.trim().toLowerCase();
+    const snap = await getDocs(
+      query(collection(db, "organizations"), where("email", "==", normalized), limit(1)),
+    );
+    if (snap.empty) return undefined;
+    const d = snap.docs[0];
+    const data = d.data();
+    const agents = data?.subscribedAgents;
+    const status = VALID_STATUSES.includes(data?.status) ? data.status : "active";
+    return {
+      orgId: d.id,
+      subscribedAgents: Array.isArray(agents)
+        ? [...new Set(agents as AgentType[])]
+        : [],
+      status,
+    };
+  } catch (err) {
+    console.warn("[rbac] Firestore org-by-email fetch failed", err);
     return undefined;
   }
 }
@@ -218,7 +258,7 @@ export async function fetchOrganizationsFromFirestore(): Promise<MockOrganisatio
       plan,
       status,
       subscribedAgents: Array.isArray(data.subscribedAgents)
-        ? (data.subscribedAgents as AgentType[])
+        ? [...new Set(data.subscribedAgents as AgentType[])]
         : [],
       totalCalls: typeof data.totalCalls === "number" ? data.totalCalls : 0,
       createdAt: formatOrgCreatedAt(data.createdAt),

@@ -8,7 +8,7 @@ import { fetchOrganizationsFromFirestore, type MockOrganisation } from "../../li
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
 import { CreateAccountModal } from "./CreateAccountModal";
-import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 // ── Agent checkbox in the assignment modal ─────────────────────────────────────
@@ -75,23 +75,11 @@ function AssignModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const orgRef = doc(db, "organizations", org.id);
-      const original = new Set(org.subscribedAgents);
-      const added = Array.from(selected).filter((a) => !original.has(a));
-      const removed = org.subscribedAgents.filter((a) => !selected.has(a));
-
-      if (removed.length > 0) {
-        await updateDoc(orgRef, {
-          subscribedAgents: arrayRemove(...removed),
-        });
-      }
-      if (added.length > 0) {
-        await updateDoc(orgRef, {
-          subscribedAgents: arrayUnion(...added),
-        });
-      }
-
-      onSaved(org.id, Array.from(selected));
+      const agents = Array.from(selected);
+      await updateDoc(doc(db, "organizations", org.id), {
+        subscribedAgents: agents,
+      });
+      onSaved(org.id, agents);
     } catch (err) {
       console.error("Failed to update subscriptions", err);
       alert("Failed to save changes. Please check permissions.");
