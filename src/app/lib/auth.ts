@@ -35,6 +35,8 @@ export interface AuthUser {
   orgId?: string;
   /** Agent type IDs the org has purchased — undefined means all (legacy / platform admin) */
   subscribedAgents?: AgentType[];
+  /** Tenant account status from Firestore — undefined for platform admins */
+  orgStatus?: "active" | "suspended" | "trial";
 }
 
 export interface AuthSession {

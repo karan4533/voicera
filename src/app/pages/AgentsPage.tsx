@@ -240,17 +240,16 @@ export function AgentsPage() {
               <div className="flex items-center justify-center gap-2 w-full h-10 rounded-lg text-[13px] font-bold border border-[#50381F] bg-[#EDE4D8] text-[#50381F] cursor-default">
                 <CheckCircle2 size={16} /> Active Agent
               </div>
-            ) : detailAgent.status === "active" ? (
+            ) : (
               <button
-                onClick={() => setAgent(detailAgent.type)}
+                onClick={() => {
+                  setAgent(detailAgent.type);
+                  setDetailAgent(null);
+                }}
                 className="flex items-center justify-center gap-2 w-full h-10 rounded-lg text-[13px] font-bold border border-transparent bg-[#50381F] text-white cursor-pointer hover:bg-[#3D2914] transition-colors shadow-sm hover:shadow"
               >
                 Set as Active Agent
               </button>
-            ) : (
-              <div className="flex items-center justify-center gap-2 w-full h-10 rounded-lg text-[13px] font-semibold border border-transparent bg-[#F0EDE8] text-[#9E9890] cursor-not-allowed">
-                Agent not active
-              </div>
             )}
           </div>
         </div>

@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router";
 import {
   Search, Plus, MoreVertical, ChevronDown,
   CheckCircle2, AlertCircle, Clock, Ban, Users,
-  ArrowUpRight, X
+  ArrowUpRight, X, Loader2,
 } from "lucide-react";
-import { MOCK_ORGANISATIONS, type MockOrganisation } from "../../lib/rbac";
+import { fetchOrganizationsFromFirestore, type MockOrganisation } from "../../lib/rbac";
 import { AGENT_TYPES } from "../../context/AgentContext";
 import type { AgentType } from "../../lib/types";
 import { CreateAccountModal } from "./CreateAccountModal";
-
-// ── Status badge ───────────────────────────────────────────────────────────────
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 function StatusBadge({ status }: { status: MockOrganisation["status"] }) {
   switch (status) {
@@ -60,11 +61,15 @@ function AgentPill({ agentId }: { agentId: AgentType }) {
   );
 }
 
-
-
-// ── OrgDrawer ─────────────────────────────────────────────────────────────────
-
-function OrgDrawer({ org, onClose }: { org: MockOrganisation; onClose: () => void }) {
+function OrgDrawer({
+  org, onClose, onManageSubscriptions, onToggleSuspend, isUpdating,
+}: {
+  org: MockOrganisation;
+  onClose: () => void;
+  onManageSubscriptions: (org: MockOrganisation) => void;
+  onToggleSuspend: (org: MockOrganisation) => void;
+  isUpdating: boolean;
+}) {
   return (
     <div className="fixed right-0 top-0 h-full w-full md:w-[420px] max-w-[100vw] bg-[#FFFFFF] border-l flex flex-col z-30 overflow-hidden shadow-2xl" style={{ borderColor: "#E7DFC8" }}>
       <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: "#E7DFC8", backgroundColor: "#F7F4EF" }}>
@@ -118,7 +123,11 @@ function OrgDrawer({ org, onClose }: { org: MockOrganisation; onClose: () => voi
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: "#6B645B" }}>Subscribed Agents</p>
           <div className="flex flex-wrap gap-2">
-            {org.subscribedAgents.map((a) => (<AgentPill key={a} agentId={a} />))}
+            {org.subscribedAgents.length === 0 ? (
+              <span className="text-[12px]" style={{ color: "#6B645B" }}>No agents assigned</span>
+            ) : (
+              org.subscribedAgents.map((a) => (<AgentPill key={a} agentId={a} />))
+            )}
           </div>
         </div>
 
@@ -145,45 +154,107 @@ function OrgDrawer({ org, onClose }: { org: MockOrganisation; onClose: () => voi
       </div>
 
       <div className="shrink-0 border-t p-5 flex flex-col gap-2.5" style={{ borderColor: "#E7DFC8" }}>
-        <button className="w-full h-10 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none flex items-center justify-center gap-2 transition-colors" style={{ backgroundColor: "#50381F" }}>
+        <button
+          onClick={() => onManageSubscriptions(org)}
+          disabled={isUpdating}
+          className="w-full h-10 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          style={{ backgroundColor: "#50381F" }}
+        >
           <ArrowUpRight size={14} /> Manage Subscriptions
         </button>
         <button
-          className="w-full h-10 rounded-lg text-[13px] font-bold cursor-pointer border-none transition-colors"
+          onClick={() => onToggleSuspend(org)}
+          disabled={isUpdating}
+          className="w-full h-10 rounded-lg text-[13px] font-bold cursor-pointer border-none transition-colors disabled:opacity-50"
           style={{ backgroundColor: org.status === "suspended" ? "#4CAF5022" : "#D9534F22", color: org.status === "suspended" ? "#4CAF50" : "#D9534F" }}
         >
-          {org.status === "suspended" ? "Reactivate Account" : "Suspend Account"}
+          {isUpdating ? "Updating..." : org.status === "suspended" ? "Reactivate Account" : "Suspend Account"}
         </button>
       </div>
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 export function CustomerAccountsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [orgs, setOrgs] = useState<MockOrganisation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<MockOrganisation | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const filtered = MOCK_ORGANISATIONS.filter((o) => {
+  const loadOrgs = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const live = await fetchOrganizationsFromFirestore();
+      live.sort((a, b) => a.name.localeCompare(b.name));
+      setOrgs(live);
+      setSelectedOrg((prev) => prev ? live.find((o) => o.id === prev.id) ?? null : null);
+    } catch (err) {
+      console.error("Failed to load organizations", err);
+      setLoadError("Could not load organisations from Firestore.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrgs();
+  }, [loadOrgs]);
+
+  const filtered = orgs.filter((o) => {
     const q = search.toLowerCase();
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.email.toLowerCase().includes(q) || o.contactName.toLowerCase().includes(q);
     const matchS = statusFilter === "all" || o.status === statusFilter;
     return matchQ && matchS;
   });
 
+  const handleManageSubscriptions = (org: MockOrganisation) => {
+    navigate("/admin/subscriptions", { state: { assignOrgId: org.id } });
+  };
+
+  const handleToggleSuspend = async (org: MockOrganisation) => {
+    const nextStatus = org.status === "suspended" ? "active" : "suspended";
+    const confirmMsg = nextStatus === "suspended"
+      ? `Suspend ${org.name}? They will not be able to access their workspace.`
+      : `Reactivate ${org.name}? They will regain access to their workspace.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsUpdating(true);
+    try {
+      await updateDoc(doc(db, "organizations", org.id), { status: nextStatus });
+      setOrgs((prev) => prev.map((o) => o.id === org.id ? { ...o, status: nextStatus } : o));
+      setSelectedOrg((prev) => prev?.id === org.id ? { ...prev, status: nextStatus } : prev);
+    } catch (err) {
+      console.error("Failed to update account status", err);
+      alert("Failed to update account status. Check Firestore permissions.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCreateClose = () => {
+    setShowCreate(false);
+    loadOrgs();
+  };
+
   return (
     <div className="flex h-full overflow-hidden relative">
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedOrg ? "md:mr-[420px]" : ""}`}>
-
-
         <div className="mb-4 shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-[22px] font-bold m-0 mb-1" style={{ color: "#1E1A16" }}>Customer Accounts</h1>
-              <p className="text-[13px] m-0" style={{ color: "#6B645B" }}>{MOCK_ORGANISATIONS.length} registered organisations — click <strong style={{ color: "#1E1A16" }}>"New Account"</strong> to create a customer and set their login credentials</p>
+              <p className="text-[13px] m-0" style={{ color: "#6B645B" }}>
+                {!loading && !loadError && (
+                  <><strong style={{ color: "#1E1A16" }}>{orgs.length}</strong> registered organisations — </>
+                )}
+                click <strong style={{ color: "#1E1A16" }}>&quot;New Account&quot;</strong> to create a customer and set their login credentials
+              </p>
             </div>
             <button
               onClick={() => setShowCreate(true)}
@@ -194,6 +265,13 @@ export function CustomerAccountsPage() {
             </button>
           </div>
         </div>
+
+        {loadError && (
+          <div className="flex items-start gap-2.5 rounded-xl border p-3 mb-4 shrink-0" style={{ backgroundColor: "#D9534F22", borderColor: "#D9534F" }}>
+            <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: "#D9534F" }} />
+            <p className="text-[12px] m-0" style={{ color: "#D9534F" }}>{loadError}</p>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 mb-4 shrink-0">
           <div className="relative flex-1 min-w-[220px] max-w-sm">
@@ -217,72 +295,87 @@ export function CustomerAccountsPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto rounded-xl border shadow-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#E7DFC8" }}>
-          <table className="w-full border-collapse text-[13px]">
-            <thead className="sticky top-0 z-10" style={{ backgroundColor: "#F7F4EF" }}>
-              <tr className="border-b" style={{ borderColor: "#E7DFC8" }}>
-                <th className="text-left text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Organisation</th>
-                <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Login Email</th>
-                <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Plan</th>
-                <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Agents Access</th>
-                <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Status</th>
-                <th className="text-right text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Calls</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-16" style={{ color: "#6B645B" }}>
-                    <Users size={36} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-[14px] font-bold">No accounts found</p>
-                    <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
-                      + Create first customer account
-                    </button>
-                  </td>
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center gap-2" style={{ color: "#6B645B" }}>
+            <Loader2 size={18} className="animate-spin" />
+            <span className="text-[13px]">Loading accounts…</span>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto rounded-xl border shadow-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#E7DFC8" }}>
+            <table className="w-full border-collapse text-[13px]">
+              <thead className="sticky top-0 z-10" style={{ backgroundColor: "#F7F4EF" }}>
+                <tr className="border-b" style={{ borderColor: "#E7DFC8" }}>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Organisation</th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Login Email</th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Plan</th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Agents Access</th>
+                  <th className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-3" style={{ color: "#6B645B" }}>Status</th>
+                  <th className="text-right text-[11px] font-bold uppercase tracking-wider px-5 py-3" style={{ color: "#6B645B" }}>Calls</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ) : (
-                filtered.map((org) => (
-                  <tr
-                    key={org.id}
-                    onClick={() => setSelectedOrg(org)}
-                    className="transition-colors cursor-pointer border-b last:border-0 hover:bg-[#F7F4EF]/50"
-                    style={{ borderColor: "#E7DFC8", backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="font-bold" style={{ color: "#1E1A16" }}>{org.name}</div>
-                      <div className="text-[11px] mt-0.5" style={{ color: "#6B645B" }}>{org.contactName}</div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="font-mono text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.email}</div>
-                      <div className="text-[10px] font-bold mt-0.5" style={{ color: "#50381F" }}>Customer Admin</div>
-                    </td>
-                    <td className="px-4 py-3.5"><PlanBadge plan={org.plan} /></td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex flex-wrap gap-1">
-                        {org.subscribedAgents.map((a) => <AgentPill key={a} agentId={a} />)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5"><StatusBadge status={org.status} /></td>
-                    <td className="px-5 py-3.5 text-right font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</td>
-                    <td className="px-4 py-3.5">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedOrg(org); }}
-                        className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-[#E7DFC8] transition-colors cursor-pointer border-none bg-transparent"
-                      >
-                        <MoreVertical size={15} style={{ color: "#6B645B" }} />
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-16" style={{ color: "#6B645B" }}>
+                      <Users size={36} className="mx-auto mb-3 opacity-30" />
+                      <p className="text-[14px] font-bold">No accounts found</p>
+                      <button onClick={() => setShowCreate(true)} className="mt-2 text-[13px] font-bold border-none bg-transparent cursor-pointer hover:underline" style={{ color: "#50381F" }}>
+                        + Create first customer account
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filtered.map((org) => (
+                    <tr
+                      key={org.id}
+                      onClick={() => setSelectedOrg(org)}
+                      className="transition-colors cursor-pointer border-b last:border-0 hover:bg-[#F7F4EF]/50"
+                      style={{ borderColor: "#E7DFC8", backgroundColor: selectedOrg?.id === org.id ? "#F7F4EF" : "transparent" }}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="font-bold" style={{ color: "#1E1A16" }}>{org.name}</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: "#6B645B" }}>{org.contactName}</div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="font-mono text-[12px] font-bold" style={{ color: "#1E1A16" }}>{org.email}</div>
+                        <div className="text-[10px] font-bold mt-0.5" style={{ color: "#50381F" }}>Customer Admin</div>
+                      </td>
+                      <td className="px-4 py-3.5"><PlanBadge plan={org.plan} /></td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-wrap gap-1">
+                          {org.subscribedAgents.map((a) => <AgentPill key={a} agentId={a} />)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5"><StatusBadge status={org.status} /></td>
+                      <td className="px-5 py-3.5 text-right font-bold" style={{ color: "#1E1A16" }}>{org.totalCalls.toLocaleString()}</td>
+                      <td className="px-4 py-3.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedOrg(org); }}
+                          className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-[#E7DFC8] transition-colors cursor-pointer border-none bg-transparent"
+                        >
+                          <MoreVertical size={15} style={{ color: "#6B645B" }} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {selectedOrg && <OrgDrawer org={selectedOrg} onClose={() => setSelectedOrg(null)} />}
-      {showCreate && <CreateAccountModal onClose={() => setShowCreate(false)} />}
+      {selectedOrg && (
+        <OrgDrawer
+          org={selectedOrg}
+          onClose={() => setSelectedOrg(null)}
+          onManageSubscriptions={handleManageSubscriptions}
+          onToggleSuspend={handleToggleSuspend}
+          isUpdating={isUpdating}
+        />
+      )}
+      {showCreate && <CreateAccountModal onClose={handleCreateClose} />}
     </div>
   );
 }

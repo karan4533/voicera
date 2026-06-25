@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import { SuspendedAccountScreen } from "./SuspendedAccountScreen";
 import type { UserRole } from "../lib/auth";
 
 // ── RoleRoute ─────────────────────────────────────────────────────────────────
@@ -27,8 +28,12 @@ export function RoleRoute({ children, allowedRoles }: RoleRouteProps) {
   // Not authenticated → go to login
   if (!session) return <Navigate to="/login" replace />;
 
-  // Role is permitted → render
+  // Role is permitted → render (block suspended customer tenants)
   if (allowedRoles.includes(session.user.role)) {
+    const isCustomer = session.user.role === "customer_admin" || session.user.role === "customer_user";
+    if (isCustomer && session.user.orgStatus === "suspended") {
+      return <SuspendedAccountScreen />;
+    }
     return <>{children}</>;
   }
 

@@ -5,7 +5,7 @@ import {
   Bell, Menu, X, LogOut, HelpCircle, Building2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useAgent } from "../context/AgentContext";
+import { AgentSwitcher } from "../components/AgentSwitcher";
 import { getSystemHealth } from "../lib/api";
 import heuristicLabsLogo from "../../assets/heuristic-labs-logo.png";
 
@@ -47,7 +47,6 @@ function NavItem({ icon: Icon, label, path, end, onNavigate }: {
 
 export function DashboardLayout() {
   const { session, logout } = useAuth();
-  const { agentLabel } = useAgent();
   const navigate = useNavigate();
   const [health, setHealth] = useState({ status: "healthy", activeCalls: 0, avgLatency: 420 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -202,9 +201,7 @@ export function DashboardLayout() {
               </button>
               <div className="hidden sm:flex items-center gap-2">
                 <span className="text-[12px] font-medium text-[#9E9890]">Active Agent:</span>
-                <span className="flex max-w-[140px] items-center gap-1.5 rounded-md border border-[#E2DDD5] bg-[#F7F4EF] px-2.5 py-1.5 text-[13px] font-medium text-[#1E1A14] sm:max-w-none">
-                  <span className="truncate">{agentLabel}</span>
-                </span>
+                <AgentSwitcher />
               </div>
             </div>
 

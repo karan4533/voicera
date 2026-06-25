@@ -117,30 +117,22 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     [subscribedKey],
   );
 
-  const [agent, setAgentState] = useState<AgentType>(() => {
-    const stored = sessionStorage.getItem(AGENT_KEY) as AgentType | null;
-    const defs = buildAgentDefs(undefined); // build all to find first on cold start
-    const firstAvailable = defs[0]?.type ?? "restaurant";
-    return stored ? (stored as AgentType) : firstAvailable;
-  });
+  const [agent, setAgentState] = useState<AgentType>("restaurant");
 
-  const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>(() =>
-    buildAgentDefs(undefined), // start with all; useEffect below narrows once session loads
-  );
+  const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>([]);
 
   // Re-build agentDefs whenever the session's subscribedAgents list changes.
-  // This fires after login (when Firestore subscription is resolved), and again
-  // if the admin updates the customer's subscription without them logging out.
   useEffect(() => {
     setAgentDefs(initialDefs);
 
-    // If the currently active agent is no longer in the subscription, reset to first.
-    if (initialDefs.length > 0 && !initialDefs.some((d) => d.type === agent)) {
-      const first = initialDefs[0].type;
-      setAgentState(first);
-      sessionStorage.setItem(AGENT_KEY, first);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (initialDefs.length === 0) return;
+
+    const stored = sessionStorage.getItem(AGENT_KEY) as AgentType | null;
+    const validStored = stored && initialDefs.some((d) => d.type === stored);
+    const next = validStored ? stored : initialDefs[0].type;
+
+    setAgentState(next);
+    sessionStorage.setItem(AGENT_KEY, next);
   }, [initialDefs]);
 
   const setAgent = useCallback((a: AgentType) => {
@@ -180,10 +172,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const agentLabel =
-    AGENTS.find((a) => a.id === agent)?.label ??
-    agentDefs.find((d) => d.type === agent)?.name ??
-    "Agent";
+  const agentLabel = agentDefs.find((d) => d.type === agent)?.name ?? "Agent";
 
   return (
     <AgentContext.Provider value={{ agent, agentLabel, setAgent, agentDefs, addAgentDef, updateAgentStatus, cloneAgent }}>

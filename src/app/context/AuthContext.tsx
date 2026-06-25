@@ -26,7 +26,7 @@ import {
   getRoleFromTokenResult,
   getOrgIdFromTokenResult,
   getSubscribedAgents,
-  getSubscribedAgentsFromFirestore,
+  getOrgFromFirestore,
 } from "../lib/rbac";
 
 // ── Context shape ─────────────────────────────────────────────────────────────
@@ -63,26 +63,28 @@ async function buildSession(user: User): Promise<AuthSession> {
   // 2. Fall back to the static demo seed map for the 6 pre-seeded orgs whose
   //    orgIds are email-derived and have no Firestore record.
   let subscribedAgents: AgentType[] | undefined;
+  let orgStatus: AuthSession["user"]["orgStatus"];
   if (role === "platform_admin") {
-    // Platform admins have no tenant and see all agents globally
     subscribedAgents = undefined;
+    orgStatus = undefined;
   } else if (orgId) {
-    subscribedAgents = await getSubscribedAgentsFromFirestore(orgId);
-    // If Firestore returned nothing, check the demo seed map. If that also fails,
-    // default to empty array (0 agents) rather than undefined (which would show all agents).
-    if (!subscribedAgents) {
+    const org = await getOrgFromFirestore(orgId);
+    if (org) {
+      subscribedAgents = org.subscribedAgents;
+      orgStatus = org.status;
+    } else {
       subscribedAgents = getSubscribedAgents(orgId) ?? [];
+      orgStatus = "active";
     }
   } else {
     subscribedAgents = [];
+    orgStatus = undefined;
   }
 
   return {
     token: tokenResult.token,
     user: {
       email,
-      // Prefer display name from Google / email provider; fall back to
-      // capitalising the local part of the email address.
       name:
         user.displayName ??
         (email
@@ -94,6 +96,7 @@ async function buildSession(user: User): Promise<AuthSession> {
       role,
       orgId,
       subscribedAgents,
+      orgStatus,
     },
     // Firebase ID tokens are valid for 1 hour; onIdTokenChanged fires on
     // automatic refresh so this cache stays current without any polling.

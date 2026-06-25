@@ -153,6 +153,31 @@ export function getSubscribedAgents(orgId: string | undefined): AgentType[] | un
   return DEMO_ORG_SUBSCRIPTIONS[orgId]; // undefined → caller should use Firestore
 }
 
+const VALID_PLANS = ["Starter", "Growth", "Enterprise"] as const;
+const VALID_STATUSES = ["active", "suspended", "trial"] as const;
+
+/**
+ * Reads organisation subscription + status from Firestore.
+ */
+export async function getOrgFromFirestore(
+  orgId: string
+): Promise<{ subscribedAgents: AgentType[]; status: MockOrganisation["status"] } | undefined> {
+  try {
+    const snap = await getDoc(doc(db, "organizations", orgId));
+    if (!snap.exists()) return undefined;
+    const data = snap.data();
+    const agents = data?.subscribedAgents;
+    const status = VALID_STATUSES.includes(data?.status) ? data.status : "active";
+    return {
+      subscribedAgents: Array.isArray(agents) ? (agents as AgentType[]) : [],
+      status,
+    };
+  } catch (err) {
+    console.warn("[rbac] Firestore org fetch failed, using demo fallback", err);
+    return undefined;
+  }
+}
+
 /**
  * PRIMARY path (production) — reads `organizations/{orgId}.subscribedAgents`
  * from Firestore. This document is written by the `createCustomerAccount`
@@ -165,23 +190,9 @@ export function getSubscribedAgents(orgId: string | undefined): AgentType[] | un
 export async function getSubscribedAgentsFromFirestore(
   orgId: string
 ): Promise<AgentType[] | undefined> {
-  try {
-    const snap = await getDoc(doc(db, "organizations", orgId));
-    if (!snap.exists()) return undefined;
-    const agents = snap.data()?.subscribedAgents;
-    if (Array.isArray(agents)) {
-      return agents as AgentType[];
-    }
-    return [];
-  } catch (err) {
-    // Network / permission error — degrade gracefully
-    console.warn("[rbac] Firestore subscription fetch failed, using demo fallback", err);
-    return undefined;
-  }
+  const org = await getOrgFromFirestore(orgId);
+  return org?.subscribedAgents;
 }
-
-const VALID_PLANS = ["Starter", "Growth", "Enterprise"] as const;
-const VALID_STATUSES = ["active", "suspended", "trial"] as const;
 
 function formatOrgCreatedAt(createdAt: unknown): string {
   if (createdAt instanceof Timestamp) {

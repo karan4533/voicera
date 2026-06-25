@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router";
 import {
   Search, Plus, X, Check, Package,
   ChevronDown, AlertCircle, Loader2,
@@ -158,6 +159,7 @@ function AssignModal({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function SubscriptionsPage() {
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [orgs, setOrgs] = useState<MockOrganisation[]>([]);
@@ -184,6 +186,14 @@ export function SubscriptionsPage() {
   useEffect(() => {
     loadOrgs();
   }, [loadOrgs]);
+
+  // Open assign modal when navigated from Customer Accounts → Manage Subscriptions
+  useEffect(() => {
+    const assignOrgId = (location.state as { assignOrgId?: string } | null)?.assignOrgId;
+    if (!assignOrgId || orgs.length === 0) return;
+    const target = orgs.find((o) => o.id === assignOrgId);
+    if (target) setAssignOrg(target);
+  }, [location.state, orgs]);
 
   const filtered = orgs.filter((o) => {
     const q = search.toLowerCase();
@@ -310,6 +320,11 @@ export function SubscriptionsPage() {
                 >
                   {org.plan}
                 </span>
+                {org.status === "suspended" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md ml-2" style={{ backgroundColor: "#D9534F22", color: "#D9534F" }}>
+                    Suspended
+                  </span>
+                )}
               </div>
 
               <div className="px-5 py-4">
