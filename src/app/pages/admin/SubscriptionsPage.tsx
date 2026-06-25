@@ -217,13 +217,19 @@ export function SubscriptionsPage() {
   return (
     <>
       <div className="mb-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-[20px] sm:text-[22px] font-bold m-0 mb-1" style={{ color: "#1E1A16" }}>Subscriptions</h1>
             <p className="text-[13px] m-0" style={{ color: "#6B645B" }}>Assign and manage agent access per customer organisation.</p>
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 h-9 px-4 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none transition-colors shadow-sm self-start sm:self-auto" style={{ backgroundColor: "#50381F" }}>
-            <Plus size={14} /> New Subscription / Account
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none transition-colors shadow-sm shrink-0 self-start"
+            style={{ backgroundColor: "#50381F" }}
+          >
+            <Plus size={14} />
+            <span className="sm:hidden">New Subscription</span>
+            <span className="hidden sm:inline">New Subscription / Account</span>
           </button>
         </div>
       </div>

@@ -246,22 +246,21 @@ export function CustomerAccountsPage() {
     <div className="flex h-full overflow-hidden relative">
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedOrg ? "md:mr-[420px]" : ""}`}>
         <div className="mb-4 shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h1 className="text-[20px] sm:text-[22px] font-bold m-0 mb-1" style={{ color: "#1E1A16" }}>Customer Accounts</h1>
               <p className="text-[13px] m-0" style={{ color: "#6B645B" }}>
                 {!loading && !loadError && (
-                  <><strong style={{ color: "#1E1A16" }}>{orgs.length}</strong> registered organisations — </>
+                  <><strong style={{ color: "#1E1A16" }}>{orgs.length}</strong> registered organisations</>
                 )}
-                <span className="hidden sm:inline">click <strong style={{ color: "#1E1A16" }}>&quot;New Account&quot;</strong> to create a customer</span>
               </p>
             </div>
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none transition-colors shadow-sm shrink-0"
+              className="flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-[13px] font-bold text-white cursor-pointer border-none transition-colors shadow-sm shrink-0 self-start"
               style={{ backgroundColor: "#50381F" }}
             >
-              <Plus size={14} /> <span className="hidden sm:inline">New Account</span><span className="sm:hidden">New</span>
+              <Plus size={14} /> New Account
             </button>
           </div>
         </div>
