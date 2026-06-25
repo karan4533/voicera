@@ -11,8 +11,8 @@ import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import {
-  doc, setDoc, updateDoc, getDoc, getDocs, arrayUnion,
-  collection, query, where, serverTimestamp,
+  doc, setDoc, updateDoc, arrayUnion,
+  serverTimestamp,
 } from "firebase/firestore";
 
 type CreateStep = "form" | "agents" | "confirm" | "success";
@@ -53,21 +53,9 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
     return Object.keys(e).length === 0;
   };
 
-  const resolveOrgId = async (normalizedEmail: string): Promise<string> => {
+  const orgIdFromEmail = (normalizedEmail: string): string => {
     const domain = normalizedEmail.split("@")[1] ?? "unknown";
-    const domainOrgId = `org-${domain.replace(/\./g, "-")}`;
-
-    const domainSnap = await getDoc(doc(db, "organizations", domainOrgId));
-    if (domainSnap.exists()) return domainOrgId;
-
-    const emailQuery = query(
-      collection(db, "organizations"),
-      where("email", "==", normalizedEmail),
-    );
-    const emailMatches = await getDocs(emailQuery);
-    if (!emailMatches.empty) return emailMatches.docs[0].id;
-
-    return domainOrgId;
+    return `org-${domain.replace(/\./g, "-")}`;
   };
 
   const saveOrganization = async (
@@ -77,7 +65,6 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
   ) => {
     const normalizedEmail = email.trim();
     const orgRef = doc(db, "organizations", orgId);
-    const orgSnap = await getDoc(orgRef);
     const baseFields = {
       orgName,
       contactName,
@@ -86,13 +73,15 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
       status: "active" as const,
     };
 
-    if (orgSnap.exists()) {
+    try {
       await updateDoc(orgRef, {
         ...baseFields,
         subscribedAgents: arrayUnion(...agents),
         ...(ownerUid ? { ownerUid } : {}),
       });
-    } else {
+    } catch (err: unknown) {
+      const fsErr = err as { code?: string };
+      if (fsErr.code !== "not-found") throw err;
       await setDoc(orgRef, {
         ...baseFields,
         subscribedAgents: agents,
@@ -119,7 +108,7 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
 
   const createViaClient = async (agents: AgentType[]) => {
     const normalizedEmail = email.trim();
-    const orgId = await resolveOrgId(normalizedEmail);
+    const orgId = orgIdFromEmail(normalizedEmail);
     let secondaryApp: FirebaseApp | null = null;
 
     try {
@@ -165,6 +154,14 @@ export function CreateAccountModal({ onClose }: { onClose: () => void }) {
       if (fbErr.code === "auth/email-already-in-use") {
         setCreationError(
           "This email is already registered. The subscription could not be updated — try Manage Agent Access on the Subscriptions page.",
+        );
+      } else if (fbErr.code === "permission-denied") {
+        setCreationError(
+          "Firestore permission denied. In Firebase Console → Firestore → Rules, publish the rules from firestore.rules in this repo (or allow authenticated writes to organizations).",
+        );
+      } else if (fbErr.code === "unavailable" || fbErr.message?.includes("offline")) {
+        setCreationError(
+          "Cannot reach Firestore. Check your internet connection, disable VPN/ad blockers, and confirm Firestore is enabled in Firebase Console → Build → Firestore Database.",
         );
       } else if (fbErr.code === "functions/aborted" && fbErr.message) {
         setCreationError(fbErr.message);

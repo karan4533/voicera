@@ -10,7 +10,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFunctions } from "firebase/functions";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableNetwork } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            as string,
@@ -32,3 +32,6 @@ export const functions = getFunctions(app);
 
 // Initialize Firestore — used to read organization subscription data
 export const db = getFirestore(app);
+
+// Ensure Firestore attempts a server connection (avoids stale offline state)
+void enableNetwork(db).catch(() => {});

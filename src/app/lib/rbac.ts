@@ -20,7 +20,7 @@
 import type { UserRole } from "./auth";
 import type { AgentType } from "./types";
 import type { IdTokenResult } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
 // ── Platform Admin email list (MVP/demo seed) ─────────────────────────────────
@@ -159,8 +159,8 @@ export function getSubscribedAgents(orgId: string | undefined): AgentType[] | un
  * Cloud Function when Platform Admin creates a new tenant.
  *
  * Returns:
- *  - `AgentType[]`  — list of subscribed agent types for this org
- *  - `undefined`    — org not found in Firestore (falls through to demo seed)
+ *  - `AgentType[]`  — list of subscribed agent types (may be empty)
+ *  - `undefined`    — org document not found in Firestore (falls through to demo seed)
  */
 export async function getSubscribedAgentsFromFirestore(
   orgId: string
@@ -168,17 +168,52 @@ export async function getSubscribedAgentsFromFirestore(
   try {
     const snap = await getDoc(doc(db, "organizations", orgId));
     if (!snap.exists()) return undefined;
-    const data = snap.data();
-    const agents = data?.subscribedAgents;
-    if (Array.isArray(agents) && agents.length > 0) {
+    const agents = snap.data()?.subscribedAgents;
+    if (Array.isArray(agents)) {
       return agents as AgentType[];
     }
-    return undefined;
+    return [];
   } catch (err) {
     // Network / permission error — degrade gracefully
     console.warn("[rbac] Firestore subscription fetch failed, using demo fallback", err);
     return undefined;
   }
+}
+
+const VALID_PLANS = ["Starter", "Growth", "Enterprise"] as const;
+const VALID_STATUSES = ["active", "suspended", "trial"] as const;
+
+function formatOrgCreatedAt(createdAt: unknown): string {
+  if (createdAt instanceof Timestamp) {
+    return createdAt.toDate().toLocaleDateString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+    });
+  }
+  if (typeof createdAt === "string" && createdAt) return createdAt;
+  return "—";
+}
+
+/** Loads all tenant organisations from Firestore for the Admin console. */
+export async function fetchOrganizationsFromFirestore(): Promise<MockOrganisation[]> {
+  const snap = await getDocs(collection(db, "organizations"));
+  return snap.docs.map((d) => {
+    const data = d.data();
+    const plan = VALID_PLANS.includes(data.plan) ? data.plan : "Starter";
+    const status = VALID_STATUSES.includes(data.status) ? data.status : "active";
+    return {
+      id: d.id,
+      name: (data.orgName ?? data.name ?? d.id) as string,
+      email: (data.email ?? "") as string,
+      plan,
+      status,
+      subscribedAgents: Array.isArray(data.subscribedAgents)
+        ? (data.subscribedAgents as AgentType[])
+        : [],
+      totalCalls: typeof data.totalCalls === "number" ? data.totalCalls : 0,
+      createdAt: formatOrgCreatedAt(data.createdAt),
+      contactName: (data.contactName ?? "") as string,
+    };
+  });
 }
 
 // ── Mock Organisation Catalog (for Admin Console) ─────────────────────────────
