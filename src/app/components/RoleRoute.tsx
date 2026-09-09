@@ -6,26 +6,11 @@ import type { UserRole } from "../lib/auth";
 
 function FullPageSpinner() {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        backgroundColor: "#FAFAF9",
-      }}
-    >
+    <div className="flex items-center justify-center min-h-screen bg-[#F7F4EF]" role="status" aria-label="Loading">
       <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          border: "3px solid #E2DDD5",
-          borderTopColor: "#50381F",
-          animation: "spin 0.75s linear infinite",
-        }}
+        className="h-9 w-9 rounded-full border-[3px] border-[#E2DDD5] border-t-[#50381F]"
+        style={{ animation: "vo-spin 0.75s linear infinite" }}
       />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

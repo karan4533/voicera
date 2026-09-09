@@ -26,6 +26,7 @@ import { SystemHealthPage } from "./pages/admin/SystemHealthPage";
 import { SecurityPage } from "./pages/admin/SecurityPage";
 import { UsagePage } from "./pages/UsagePage";
 
+import { Toaster } from "sonner";
 import { useAuth } from "./context/AuthContext";
 
 /** Redirects already-authenticated users away from the login page. */
@@ -33,9 +34,8 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#FAFAF9" }}>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid #E2DDD5", borderTopColor: "#50381F", animation: "spin 0.75s linear infinite" }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F7F4EF" }} role="status" aria-label="Loading">
+        <div className="h-9 w-9 rounded-full border-[3px] border-[#E2DDD5] border-t-[#50381F]" style={{ animation: "vo-spin 0.75s linear infinite" }} />
       </div>
     );
   }
@@ -50,6 +50,18 @@ export default function App() {
     <AuthProvider>
       <AgentProvider>
         <BrowserRouter>
+          <Toaster
+            theme="light"
+            position="top-right"
+            toastOptions={{
+              style: {
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontSize: 13,
+                border: "1px solid #E2DDD5",
+                borderRadius: 12,
+              },
+            }}
+          />
           <Routes>
             {/* ── Public ───────────────────────────────────────────────────── */}
             <Route

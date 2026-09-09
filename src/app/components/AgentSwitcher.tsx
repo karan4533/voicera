@@ -12,7 +12,7 @@ export function AgentSwitcher() {
   }
 
   return (
-    <span className="text-[13px] font-semibold text-[#1E1A14]">
+    <span className="text-[13px] font-semibold text-[#1E1A14] truncate max-w-[180px] sm:max-w-none">
       {activeDef?.name ?? "Agent"}
     </span>
   );

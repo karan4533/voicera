@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router";
+import { Outlet, NavLink, useNavigate, Link, useLocation } from "react-router";
 import {
   Bot, LayoutDashboard, Library, Phone, BarChart3, Rocket,
   Megaphone, Users, Menu, X, LogOut, HelpCircle, Building2, CreditCard,
@@ -11,6 +11,7 @@ import { NotificationBell } from "../components/NotificationBell";
 import { CORE_SETUP_NAV, OPERATIONS_NAV, TENANT_ADMIN_NAV } from "../lib/workflow";
 import { getSystemHealth } from "../lib/api";
 import type { AgentType } from "../lib/types";
+import { ConfirmDialog } from "../components/shared/UiKit";
 import heuristicLabsLogoLight from "../../assets/heuristic-labs-logo-light.png";
 
 const ICON_BY_ID: Record<string, typeof Phone> = {
@@ -34,7 +35,7 @@ function NavItem({ icon: Icon, label, path, end, onNavigate }: {
       end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `flex items-center gap-2.5 h-10 px-[18px] border-l-[3px] text-[13px] no-underline w-full transition-colors ${
+        `flex items-center gap-2.5 min-h-10 h-10 px-[18px] border-l-[3px] text-[13px] no-underline w-full transition-[background-color,color,border-color] duration-200 ${
           isActive
             ? "border-l-white/90 bg-white/15 text-white font-semibold"
             : "border-l-transparent text-white/65 font-normal hover:bg-white/10 hover:text-white/90"
@@ -63,6 +64,7 @@ export function DashboardLayout() {
   const { session, logout, switchTenant, userTenants } = useAuth();
   const { setAgent } = useAgent();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [health, setHealth] = useState({ status: "healthy", activeCalls: 0, avgLatency: 420 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
@@ -149,16 +151,29 @@ export function DashboardLayout() {
 
   const sidebar = (
     <>
-      {/* Logo */}
+      {/* Logo — click returns to workspace home */}
       <div className="flex items-center gap-3 px-5 pt-6 pb-5">
-        <img
-          src={heuristicLabsLogoLight}
-          alt="Voicera"
-          className="h-[38px] w-[38px] object-contain shrink-0"
-        />
-        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
-          Voicera
-        </span>
+        <Link
+          to="/dashboard"
+          onClick={(e) => {
+            closeSidebar();
+            if (pathname === "/dashboard") {
+              e.preventDefault();
+              document.getElementById("main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="flex min-w-0 items-center gap-3 rounded-lg no-underline -ml-1 px-1 py-0.5 hover:bg-white/10 transition-colors"
+          aria-label="Voicera home"
+        >
+          <img
+            src={heuristicLabsLogoLight}
+            alt=""
+            className="h-[38px] w-[38px] object-contain shrink-0"
+          />
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+            Voicera
+          </span>
+        </Link>
         <button
           type="button"
           onClick={closeSidebar}
@@ -209,7 +224,12 @@ export function DashboardLayout() {
 
       {/* Footer */}
       <div className="border-t border-white/10 pt-2">
-        <button className="flex h-9 w-full items-center gap-2 border-none bg-transparent px-[18px] text-white/50 cursor-pointer text-[12px] hover:text-white/80 transition-colors">
+        <button
+          type="button"
+          className="flex h-10 w-full items-center gap-2 border-none bg-transparent px-[18px] text-white/50 cursor-pointer text-[12px] hover:text-white/80 hover:bg-white/5 transition-colors"
+          aria-label="Help and support"
+          title="Help & Support"
+        >
           <HelpCircle size={14} />
           Help & Support
         </button>
@@ -261,35 +281,37 @@ export function DashboardLayout() {
 
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F7F4EF] font-[Inter,sans-serif]">
+      <a href="#main-content" className="vo-skip">Skip to content</a>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          className="vo-overlay fixed inset-0 z-40 lg:hidden"
           onClick={closeSidebar}
           aria-hidden={true}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 lg:static lg:z-auto lg:min-w-[210px] lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:min-w-[210px] lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ backgroundColor: "#50381F" }}
+        aria-label="Workspace navigation"
       >
         {sidebar}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-[#E2DDD5] bg-white px-4 h-14 sm:px-6">
+        <header className="relative z-40 shrink-0 border-b border-[#E2DDD5] bg-white/95 backdrop-blur-sm px-4 h-14 sm:px-6">
           <div className="flex items-center justify-between w-full h-14">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2DDD5] bg-white lg:hidden cursor-pointer"
+                className="vo-icon-btn lg:hidden"
                 aria-label="Open menu"
               >
-                <Menu size={18} color="#7A746C" />
+                <Menu size={18} />
               </button>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="hidden sm:inline text-[12px] font-medium text-[#9E9890] shrink-0">Active agent:</span>
@@ -301,7 +323,7 @@ export function DashboardLayout() {
             </div>
 
             <div className="flex items-center gap-3 sm:gap-5">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" title={health.status === "healthy" ? "System healthy" : "System degraded"}>
                 <div className={`h-2 w-2 rounded-full ${health.status === "healthy" ? "bg-[#22C55E]" : "bg-[#F59E0B]"}`} />
                 <span className="text-[12px] font-medium text-[#7A746C] hidden sm:inline">
                   {health.status === "healthy" ? "System Healthy" : "Degraded"}
@@ -317,9 +339,9 @@ export function DashboardLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-7">
+        <main id="main-content" className="flex-1 overflow-auto p-4 sm:p-6 lg:p-7 vo-page" tabIndex={-1}>
           {noWorkspace ? (
-            <div className="mx-auto mt-16 max-w-md rounded-xl border border-[#E2DDD5] bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto mt-16 max-w-md vo-card p-8 text-center">
               <Building2 size={36} className="mx-auto mb-4 text-[#9E9890]" />
               <h2 className="m-0 mb-2 text-lg font-bold text-[#1E1A14]">No workspace assigned</h2>
               <p className="m-0 mb-6 text-[13px] text-[#7A746C] leading-relaxed">
@@ -341,10 +363,10 @@ export function DashboardLayout() {
 
       {/* Post-login multi-tenant switcher — only when user belongs to 2+ orgs */}
       {tenantPicker && userTenants.length > 1 && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50">
-          <div className="w-[440px] max-w-[92vw] rounded-xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Choose tenant workspace">
+        <div className="vo-overlay fixed inset-0 z-[210] flex items-center justify-center">
+          <div className="vo-dialog w-[440px] max-w-[92vw] p-6" role="dialog" aria-modal="true" aria-labelledby="tenant-picker-title">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#b5763a]">Workspace</div>
-            <h2 className="m-0 mb-2 text-base font-bold text-[#1E1A14]">Choose your tenant</h2>
+            <h2 id="tenant-picker-title" className="m-0 mb-2 text-base font-bold text-[#1E1A14]">Choose your tenant</h2>
             <p className="m-0 mb-4 text-[13px] text-[#7A746C] leading-relaxed">
               Your account belongs to <strong>more than one organization</strong>.
               Pick the tenant for this session — agents, calls, and campaigns stay scoped to that org.
@@ -359,7 +381,7 @@ export function DashboardLayout() {
                   key={t.id}
                   type="button"
                   onClick={() => pickTenant(t.id, t.name, t.primaryAgent)}
-                  className="text-left rounded-lg border border-[#E2DDD5] bg-white px-4 py-3 cursor-pointer hover:border-[#C9B99E] hover:bg-[#F7F4EF]"
+                  className="text-left rounded-lg border border-[#E2DDD5] bg-white px-4 py-3 cursor-pointer hover:border-[#C9B99E] hover:bg-[#F7F4EF] transition-colors duration-150"
                 >
                   <div className="text-[14px] font-semibold text-[#1E1A14]">{t.name}</div>
                   <div className="text-[12px] text-[#7A746C] mt-0.5">{t.detail}</div>
@@ -371,43 +393,16 @@ export function DashboardLayout() {
         </div>
       )}
 
-      {/* Logout confirmation dialog */}
       {logoutConfirm && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
-          onClick={() => setLogoutConfirm(false)}
-          aria-hidden={true}
-        >
-          <div
-            className="w-[320px] rounded-xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm sign out"
-          >
-            <h2 className="m-0 mb-2 text-base font-bold text-[#1E1A14]">Sign out?</h2>
-            <p className="m-0 mb-5 text-[13px] text-[#7A746C]">
-              You will be returned to the login page.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setLogoutConfirm(false)}
-                className="h-9 rounded-lg border border-[#E2DDD5] bg-white px-4 text-[13px] font-medium text-[#1E1A14] cursor-pointer hover:bg-[#F7F4EF] transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                id="confirm-logout"
-                onClick={handleLogout}
-                className="h-9 rounded-lg border-none bg-[#DC2626] px-4 text-[13px] font-semibold text-white cursor-pointer hover:bg-[#B91C1C] transition-colors"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Sign out?"
+          description="You will be returned to the login page."
+          confirmLabel="Sign out"
+          danger
+          confirmId="confirm-logout"
+          onCancel={() => setLogoutConfirm(false)}
+          onConfirm={handleLogout}
+        />
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  BookOpen, Upload, Trash2, RefreshCw, FileText, Search,
+  BookOpen, Upload, Trash2, RefreshCw, FileText,
 } from "lucide-react";
 import { PageHeader } from "../components/shared/PageHeader";
+import { EmptyState, SearchField, SkeletonBlock, ConfirmDialog } from "../components/shared/UiKit";
 import { useAgent } from "../context/AgentContext";
 import {
   getKnowledgeFiles,
@@ -36,6 +37,7 @@ export function KnowledgePage() {
   const [category, setCategory] = useState<"menu" | "faq">("faq");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reload = () => {
@@ -75,6 +77,7 @@ export function KnowledgePage() {
   const handleDelete = async (id: string) => {
     await deleteKnowledgeFile(id);
     setFiles((prev) => prev.filter((f) => f.id !== id));
+    setDeleteId(null);
   };
 
   const handleReindex = async (id: string) => {
@@ -101,7 +104,7 @@ export function KnowledgePage() {
               type="button"
               disabled={uploading}
               onClick={() => inputRef.current?.click()}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border-none bg-[#50381F] text-white text-[13px] font-semibold cursor-pointer hover:bg-[#3D2914] disabled:opacity-60"
+              className="vo-btn vo-btn-primary h-9 disabled:opacity-60"
             >
               <Upload size={14} />
               {uploading ? "Uploading…" : "Upload"}
@@ -123,28 +126,24 @@ export function KnowledgePage() {
         </div>
       )}
 
-      <div className="relative mb-4 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9E9890]" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search knowledge files…"
-          className="w-full h-10 pl-9 pr-3 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:border-[#C9B99E]"
-        />
+      <div className="mb-4 max-w-md">
+        <SearchField value={search} onChange={setSearch} placeholder="Search knowledge files…" />
       </div>
 
-      <div className="rounded-xl border border-[#E2DDD5] bg-white overflow-hidden">
+      <div className="vo-card overflow-hidden">
         {loading ? (
-          <div className="py-16 text-center text-[13px] text-[#9E9890]">Loading knowledge base…</div>
-        ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-[#9E9890]">
-            <BookOpen size={36} className="mx-auto mb-3 opacity-30" />
-            <p className="m-0 text-[14px] font-medium">No documents yet for this agent</p>
-            <p className="m-0 mt-1 text-[12px]">Upload PDF, DOCX, TXT, CSV, or XLSX to start indexing</p>
+          <div className="p-5 flex flex-col gap-3" aria-hidden>
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-10 w-full" />)}
           </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title="No documents yet for this agent"
+            description="Upload PDF, DOCX, TXT, CSV, or XLSX to start indexing."
+          />
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-[13px]">
+          <table className="vo-table w-full min-w-[640px] border-collapse text-[13px]">
             <thead className="bg-[#F7F4EF]">
               <tr className="border-b border-[#E2DDD5]">
                 <th className="text-left text-[11px] font-bold text-[#7A746C] uppercase tracking-wider px-5 py-3">File</th>
@@ -178,6 +177,7 @@ export function KnowledgePage() {
                       <button
                         type="button"
                         title="Reindex"
+                        aria-label={`Reindex ${f.name}`}
                         onClick={() => handleReindex(f.id)}
                         className="h-8 w-8 flex items-center justify-center rounded-lg border-none bg-transparent hover:bg-[#F0EDE8] cursor-pointer"
                       >
@@ -186,7 +186,8 @@ export function KnowledgePage() {
                       <button
                         type="button"
                         title="Delete"
-                        onClick={() => handleDelete(f.id)}
+                        aria-label={`Delete ${f.name}`}
+                        onClick={() => setDeleteId(f.id)}
                         className="h-8 w-8 flex items-center justify-center rounded-lg border-none bg-transparent hover:bg-[#FEE2E2] cursor-pointer"
                       >
                         <Trash2 size={14} className="text-[#DC2626]" />
@@ -200,6 +201,17 @@ export function KnowledgePage() {
           </div>
         )}
       </div>
+
+      {deleteId && (
+        <ConfirmDialog
+          title="Delete document?"
+          description="This file will be removed from the knowledge base and can no longer be used in voice answers."
+          confirmLabel="Delete"
+          danger
+          onCancel={() => setDeleteId(null)}
+          onConfirm={() => { void handleDelete(deleteId); }}
+        />
+      )}
     </div>
   );
 }

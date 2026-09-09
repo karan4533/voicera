@@ -19,7 +19,7 @@ function SectionCard({
   action?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+    <div className="vo-card overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF]">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-[#EDE4D8] flex items-center justify-center shrink-0">
@@ -163,7 +163,7 @@ function RestaurantCustomize() {
   return (
     <>
       {/* Menu Items */}
-      <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+      <div className="vo-card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF]">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-[#EDE4D8] flex items-center justify-center shrink-0">
@@ -387,7 +387,7 @@ function FeedbackCustomize() {
   return (
     <>
       {/* Contact List */}
-      <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+      <div className="vo-card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF]">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-[#EDE4D8] flex items-center justify-center shrink-0">
@@ -631,7 +631,7 @@ export function CustomizePage() {
 
       <div className="flex flex-col gap-5">
         {/* Shared PRD config fields */}
-        <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+        <div className="vo-card overflow-hidden">
           <div className="px-5 py-4 border-b border-[#E2DDD5] bg-[#F7F4EF]">
             <h2 className="m-0 text-[14px] font-semibold text-[#1E1A14]">Agent configuration</h2>
             <p className="m-0 text-[11px] text-[#9E9890]">Required fields before launch</p>

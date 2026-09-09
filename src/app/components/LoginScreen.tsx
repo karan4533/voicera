@@ -343,8 +343,9 @@ export function LoginScreen() {
                   <label htmlFor="email" style={{ fontSize: 12, fontWeight: 600, color: MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
                   <input
                     id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    className="vo-input"
                     placeholder="you@company.com" autoComplete="email" disabled={loading}
-                    style={{ height: 40, border: `1.5px solid ${BORDER}`, borderRadius: 8, padding: "0 12px", fontSize: 13, color: TEXT, outline: "none", width: "100%", boxSizing: "border-box", backgroundColor: "#fff", transition: "border-color 0.15s", opacity: loading ? 0.6 : 1 }}
+                    style={{ height: 40, border: `1.5px solid ${error ? "#DC2626" : BORDER}`, borderRadius: 8, padding: "0 12px", fontSize: 13, color: TEXT, outline: "none", width: "100%", boxSizing: "border-box", backgroundColor: "#fff" }}
                     onFocus={(e) => e.target.style.borderColor = ACCENT}
                     onBlur={(e) => e.target.style.borderColor = BORDER}
                   />
@@ -359,11 +360,12 @@ export function LoginScreen() {
                         id="password" type={showPassword ? "text" : "password"} value={password}
                         onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
                         autoComplete="current-password" disabled={loading}
-                        style={{ height: 40, border: `1.5px solid ${BORDER}`, borderRadius: 8, padding: "0 40px 0 12px", fontSize: 13, color: TEXT, outline: "none", width: "100%", boxSizing: "border-box", backgroundColor: "#fff", transition: "border-color 0.15s", opacity: loading ? 0.6 : 1 }}
+                        className="vo-input"
+                        style={{ height: 40, border: `1.5px solid ${error ? "#DC2626" : BORDER}`, borderRadius: 8, padding: "0 40px 0 12px", fontSize: 13, color: TEXT, outline: "none", width: "100%", boxSizing: "border-box", backgroundColor: "#fff" }}
                         onFocus={(e) => e.target.style.borderColor = ACCENT}
                         onBlur={(e) => e.target.style.borderColor = BORDER}
                       />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#9E9890", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#9E9890", background: "none", border: "none", cursor: "pointer", padding: 6, display: "flex", borderRadius: 6 }}>
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -393,10 +395,9 @@ export function LoginScreen() {
                 <button
                   id={mode === "login" ? "login-submit" : "forgot-submit"}
                   type="submit"
+                  className="vo-btn vo-btn-primary"
                   disabled={loading}
-                  style={{ width: "100%", height: 44, backgroundColor: loading ? "#7A5C3C" : ACCENT, borderRadius: 8, border: "none", color: "#fff", fontWeight: 600, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", transition: "background-color 0.15s", marginTop: 4 }}
-                  onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = ACCENT_H; }}
-                  onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = ACCENT; }}
+                  style={{ width: "100%", height: 44, marginTop: 4 }}
                 >
                   {loading ? (mode === "login" ? "Signing in…" : "Sending link…") : (mode === "login" ? "Sign In" : "Send Reset Link")}
                 </button>
@@ -412,14 +413,10 @@ export function LoginScreen() {
                       type="button"
                       id="google-sso-login"
                       onClick={handleGoogle}
+                      className="vo-btn vo-btn-secondary"
                       disabled={loading}
                       aria-label="Sign in with Google SSO"
-                      style={{
-                        width: "100%", height: 44, backgroundColor: "#fff", borderRadius: 8,
-                        border: `1.5px solid ${BORDER}`, color: TEXT, fontWeight: 600, fontSize: 14,
-                        cursor: loading ? "not-allowed" : "pointer", display: "flex",
-                        alignItems: "center", justifyContent: "center", gap: 10,
-                      }}
+                      style={{ width: "100%", height: 44 }}
                     >
                       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>

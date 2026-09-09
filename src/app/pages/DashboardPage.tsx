@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "../components/shared/PageHeader";
+import { MetricSkeleton } from "../components/shared/UiKit";
 import { getDashboardMetrics, getExtractedData, getCallDetails } from "../lib/api";
 import { useAgent } from "../context/AgentContext";
 import type { DashboardMetrics, ExtractedEntity, CallDetail } from "../lib/types";
@@ -29,7 +30,7 @@ function KpiCard({
   icon: Icon, label, value, sub, iconColor,
 }: { icon: typeof Phone; label: string; value: string; sub?: string; iconColor: string }) {
   return (
-    <div className="bg-white border border-[#E2DDD5] rounded-xl p-4 flex flex-col gap-3">
+    <div className="vo-card p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold text-[#7A746C] uppercase tracking-wider">{label}</span>
         <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${iconColor}15` }}>
@@ -46,7 +47,7 @@ function KpiCard({
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+    <div className="vo-card overflow-hidden">
       <div className="px-5 py-4 border-b border-[#F0EDE8]">
         <h2 className="m-0 text-[14px] font-semibold text-[#1E1A14]">{title}</h2>
       </div>
@@ -132,12 +133,16 @@ export function DashboardPage() {
         subtitle="Tenant-wide performance across all agents — KPIs, trends, recent calls, and action items"
       />
 
+      {!metrics ? (
+        <MetricSkeleton />
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
-        <KpiCard icon={Phone} label="Total calls" value={metrics ? metrics.totalCalls.toLocaleString() : "—"} sub={metrics ? `${metrics.todayCalls ?? 0} today` : undefined} iconColor="#50381F" />
-        <KpiCard icon={Clock} label="Avg call duration" value={metrics?.avgDuration ?? "—"} iconColor="#2563EB" />
-        <KpiCard icon={CheckCircle} label="Success / qualification" value={metrics ? `${metrics.resolutionRate ?? 0}%` : "—"} iconColor="#16A34A" />
-        <KpiCard icon={TrendingUp} label="Connected calls" value={metrics ? (metrics.connectedCalls ?? 0).toLocaleString() : "—"} iconColor="#D97706" />
+        <KpiCard icon={Phone} label="Total calls" value={metrics.totalCalls.toLocaleString()} sub={`${metrics.todayCalls ?? 0} today`} iconColor="#50381F" />
+        <KpiCard icon={Clock} label="Avg call duration" value={metrics.avgDuration ?? "—"} iconColor="#2563EB" />
+        <KpiCard icon={CheckCircle} label="Success / qualification" value={`${metrics.resolutionRate ?? 0}%`} iconColor="#16A34A" />
+        <KpiCard icon={TrendingUp} label="Connected calls" value={(metrics.connectedCalls ?? 0).toLocaleString()} iconColor="#D97706" />
       </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <SectionCard title="Call volume trend">
@@ -173,7 +178,7 @@ export function DashboardPage() {
         </SectionCard>
       </div>
 
-      <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden mb-4">
+      <div className="vo-card overflow-hidden mb-4">
         <div className="px-5 py-4 border-b border-[#F0EDE8] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ListTodo size={15} className="text-[#50381F]" />
@@ -210,7 +215,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-[#E2DDD5] rounded-xl overflow-hidden">
+      <div className="vo-card overflow-hidden">
         <div className="px-5 py-4 border-b border-[#F0EDE8] flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="m-0 text-[14px] font-semibold text-[#1E1A14]">Recent calls</h2>
@@ -224,7 +229,7 @@ export function DashboardPage() {
                 placeholder="Search calls..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 pl-8 pr-3 rounded-lg border border-[#E2DDD5] bg-[#F7F4EF] text-[12px] text-[#1E1A14] outline-none focus:border-[#C9B99E] w-44"
+                className="vo-input h-8 pl-8 pr-3 w-44 bg-[#F7F4EF]"
               />
             </div>
             <button
@@ -237,7 +242,7 @@ export function DashboardPage() {
         </div>
 
         <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] border-collapse">
+            <table className="vo-table w-full min-w-[700px] border-collapse">
             <thead>
               <tr className="bg-[#F7F4EF] border-b border-[#E2DDD5]">
                 {["Timestamp", "Agent", "Contact", "Outcome", "Status", "Transcript"].map((h) => (

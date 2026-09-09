@@ -26,19 +26,8 @@ export function StatusBadge({ status, pulse = false }: { status: string; pulse?:
 
   return (
     <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        backgroundColor: s.bg,
-        color: s.color,
-        borderRadius: 20,
-        padding: "2px 10px",
-        fontFamily: "Inter, sans-serif",
-        fontWeight: 700,
-        fontSize: 11,
-        whiteSpace: "nowrap",
-      }}
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+      style={{ backgroundColor: s.bg, color: s.color }}
     >
       <span
         className={pulse ? "vocera-pulse" : undefined}

@@ -92,28 +92,18 @@ export function NotificationBell({ variant }: { variant: "admin" | "customer" })
   };
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className={`relative ${open ? "z-[90]" : ""}`}>
       <button
         type="button"
         onClick={toggle}
-        className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border cursor-pointer transition-colors ${
-          variant === "admin"
-            ? "hover:bg-gray-50"
-            : "bg-white hover:border-[#C9B99E]"
-        }`}
-        style={{
-          borderColor: variant === "admin" ? "#E7DFC8" : "#E2DDD5",
-          backgroundColor: variant === "admin" ? "transparent" : "#FFFFFF",
-        }}
-        aria-label="Notifications"
+        className="vo-icon-btn relative"
+        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
         aria-expanded={open}
+        aria-haspopup="dialog"
       >
-        <Bell size={15} color={variant === "admin" ? "#6B645B" : undefined} className={variant === "customer" ? "text-[#7A746C]" : undefined} />
+        <Bell size={15} />
         {unread > 0 && (
-          <span
-            className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-            style={{ backgroundColor: "#D9534F" }}
-          >
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center bg-[#DC2626]">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -121,8 +111,7 @@ export function NotificationBell({ variant }: { variant: "admin" | "customer" })
 
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-[80] w-[340px] max-w-[calc(100vw-24px)] rounded-xl border bg-white shadow-xl overflow-hidden"
-          style={{ borderColor: "#E7DFC8" }}
+          className="vo-dialog absolute right-0 top-[calc(100%+8px)] z-[90] w-[340px] max-w-[calc(100vw-24px)] overflow-hidden border border-[#E2DDD5]"
           role="dialog"
           aria-label="Notifications"
         >
@@ -139,9 +128,11 @@ export function NotificationBell({ variant }: { variant: "admin" | "customer" })
                 Loading…
               </p>
             ) : items.length === 0 ? (
-              <p className="px-4 py-8 text-[13px] text-center m-0" style={{ color: "#6B645B" }}>
-                No notifications yet.
-              </p>
+              <div className="px-4 py-8 flex flex-col items-center text-center">
+                <Bell size={18} className="text-[#C9B99E] mb-2" aria-hidden />
+                <p className="m-0 text-[13px] font-medium text-[#1E1A14]">No notifications yet</p>
+                <p className="m-0 mt-1 text-[12px] text-[#7A746C]">You are all caught up.</p>
+              </div>
             ) : (
               items.map((item) => (
                 <button

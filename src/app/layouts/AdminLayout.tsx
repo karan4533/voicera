@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router";
+import { Outlet, NavLink, useNavigate, Link, useLocation } from "react-router";
 import {
   LayoutDashboard, Users, Package,
   Activity, LogOut, X, Menu, Shield, HelpCircle, KeyRound,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { NotificationBell } from "../components/NotificationBell";
+import { ConfirmDialog } from "../components/shared/UiKit";
 import heuristicLabsLogoLight from "../../assets/heuristic-labs-logo-light.png";
 
 // ── Admin nav items ────────────────────────────────────────────────────────────
@@ -31,7 +32,7 @@ function AdminNavItem({
       end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
-        `flex items-center gap-2.5 h-10 px-[18px] border-l-[3px] text-[13px] no-underline w-full transition-colors ${
+        `flex items-center gap-2.5 min-h-10 h-10 px-[18px] border-l-[3px] text-[13px] no-underline w-full transition-[background-color,color,border-color] duration-200 ${
           isActive
             ? "border-l-white/90 bg-white/15 text-white font-semibold"
             : "border-l-transparent text-white/65 font-normal hover:bg-white/10 hover:text-white/90"
@@ -49,6 +50,7 @@ function AdminNavItem({
 export function AdminLayout() {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
 
@@ -73,16 +75,29 @@ export function AdminLayout() {
 
   const sidebar = (
     <>
-      {/* Logo + brand */}
+      {/* Logo + brand — click returns to admin home */}
       <div className="flex items-center gap-3 px-5 pt-6 pb-5">
-        <img
-          src={heuristicLabsLogoLight}
-          alt="Voicera"
-          className="h-[38px] w-[38px] object-contain shrink-0"
-        />
-        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
-          Voicera
-        </span>
+        <Link
+          to="/admin"
+          onClick={(e) => {
+            closeSidebar();
+            if (pathname === "/admin") {
+              e.preventDefault();
+              document.getElementById("main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="flex min-w-0 items-center gap-3 rounded-lg no-underline -ml-1 px-1 py-0.5 hover:bg-white/10 transition-colors"
+          aria-label="Voicera home"
+        >
+          <img
+            src={heuristicLabsLogoLight}
+            alt=""
+            className="h-[38px] w-[38px] object-contain shrink-0"
+          />
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+            Voicera
+          </span>
+        </Link>
         <button
           type="button"
           onClick={closeSidebar}
@@ -160,105 +175,70 @@ export function AdminLayout() {
 
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden font-[Inter,sans-serif]" style={{ backgroundColor: "#F7F4EF" }}>
-      {/* Mobile overlay */}
+      <a href="#main-content" className="vo-skip">Skip to content</a>
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="vo-overlay fixed inset-0 z-40 lg:hidden"
           onClick={closeSidebar}
           aria-hidden={true}
         />
       )}
 
-      {/* Sidebar — earthy theme */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 lg:static lg:z-auto lg:min-w-[210px] lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:min-w-[210px] lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ backgroundColor: "#50381F" }}
+        aria-label="Admin navigation"
       >
         {sidebar}
       </aside>
 
-      {/* Main content area */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <header className="shrink-0 border-b px-4 h-14 sm:px-6" style={{ backgroundColor: "#FFFFFF", borderColor: "#E7DFC8" }}>
+        <header className="relative z-40 shrink-0 border-b border-[#E2DDD5] bg-white/95 backdrop-blur-sm px-4 h-14 sm:px-6">
           <div className="flex items-center justify-between w-full h-14">
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border lg:hidden cursor-pointer hover:bg-gray-50"
-                style={{ borderColor: "#E7DFC8", backgroundColor: "transparent" }}
+                className="vo-icon-btn lg:hidden"
                 aria-label="Open menu"
               >
-                <Menu size={18} color="#1E1A16" />
+                <Menu size={18} />
               </button>
               <div className="hidden sm:flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border" style={{ borderColor: "#E7DFC8", backgroundColor: "#F7F4EF" }}>
-                  <Shield size={12} style={{ color: "#50381F" }} />
-                  <span className="text-[12px] font-bold" style={{ color: "#50381F" }}>Admin Console</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2DDD5] bg-[#F7F4EF]">
+                  <Shield size={12} className="text-[#50381F]" />
+                  <span className="text-[12px] font-semibold text-[#50381F]">Admin Console</span>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Live indicator */}
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: "#4CAF50" }} />
-                <span className="text-[12px] font-semibold hidden sm:inline" style={{ color: "#6B645B" }}>All Systems Operational</span>
+              <div className="flex items-center gap-1.5" title="All systems operational">
+                <div className="h-2 w-2 rounded-full bg-[#22C55E]" />
+                <span className="text-[12px] font-medium hidden sm:inline text-[#7A746C]">All Systems Operational</span>
               </div>
               <NotificationBell variant="admin" />
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-7">
+        <main id="main-content" className="flex-1 overflow-auto p-4 sm:p-6 lg:p-7 vo-page" tabIndex={-1}>
           <Outlet />
         </main>
       </div>
 
-      {/* Logout confirmation dialog */}
       {logoutConfirm && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
-          onClick={() => setLogoutConfirm(false)}
-          aria-hidden={true}
-        >
-          <div
-            className="w-[320px] rounded-xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm sign out"
-          >
-            <h2 className="m-0 mb-2 text-base font-bold" style={{ color: "#1E1A16" }}>Sign out?</h2>
-            <p className="m-0 mb-5 text-[13px]" style={{ color: "#6B645B" }}>
-              You will be returned to the login page.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setLogoutConfirm(false)}
-                className="h-9 rounded-lg border px-4 text-[13px] font-semibold cursor-pointer transition-colors"
-                style={{ borderColor: "#E7DFC8", color: "#1E1A16", backgroundColor: "#FFFFFF" }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#F7F4EF")}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#FFFFFF")}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                id="admin-confirm-logout"
-                onClick={handleLogout}
-                className="h-9 rounded-lg border-none px-4 text-[13px] font-bold text-white cursor-pointer transition-colors"
-                style={{ backgroundColor: "#D9534F" }}
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Sign out?"
+          description="You will be returned to the login page."
+          confirmLabel="Sign out"
+          danger
+          confirmId="admin-confirm-logout"
+          onCancel={() => setLogoutConfirm(false)}
+          onConfirm={handleLogout}
+        />
       )}
     </div>
   );

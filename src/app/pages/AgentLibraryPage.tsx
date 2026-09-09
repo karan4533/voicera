@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Utensils, Landmark, ShoppingBag, Headphones, Stethoscope,
-  Building2, Shield, Users, CreditCard, Cpu, Bot, Search, Rocket,
+  Building2, Shield, Users, CreditCard, Cpu, Bot, Rocket,
 } from "lucide-react";
 import { PageHeader } from "../components/shared/PageHeader";
+import { EmptyState, SearchField } from "../components/shared/UiKit";
 import { AGENT_TYPES } from "../context/AgentContext";
 import { useAuth } from "../context/AuthContext";
 import type { AgentType } from "../lib/types";
@@ -50,10 +51,11 @@ export function AgentLibraryPage() {
   };
 
   const empty = (
-    <div className="text-center py-16 text-[#9E9890]">
-      <Bot size={36} className="mx-auto mb-3 opacity-30" />
-      <p className="text-[14px] font-medium m-0">No templates match your search</p>
-    </div>
+    <EmptyState
+      icon={Bot}
+      title="No templates match your search"
+      description="Try a different name or category, or clear the search to see purchased templates."
+    />
   );
 
   return (
@@ -65,14 +67,11 @@ export function AgentLibraryPage() {
         />
       </div>
 
-      <div className="relative mb-4 w-full max-w-md shrink-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9E9890]" />
-        <input
-          type="text"
-          placeholder="Search templates by name or category…"
+      <div className="mb-4 w-full max-w-md shrink-0">
+        <SearchField
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 h-10 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:border-[#C9B99E] focus:ring-1 focus:ring-[#C9B99E]"
+          onChange={setSearch}
+          placeholder="Search templates by name or category…"
         />
       </div>
 
@@ -84,7 +83,7 @@ export function AgentLibraryPage() {
           templates.map((t) => (
             <div
               key={t.id}
-              className="rounded-xl border border-[#E2DDD5] bg-white p-4 shadow-sm"
+              className="rounded-xl border border-[#E2DDD5] bg-white p-4 shadow-sm vo-card-hover"
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
@@ -108,7 +107,7 @@ export function AgentLibraryPage() {
               <button
                 type="button"
                 onClick={() => openConfigure(t.id as AgentType)}
-                className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg border-none bg-[#50381F] text-white text-[13px] font-semibold cursor-pointer"
+                className="w-full vo-btn vo-btn-primary h-10"
               >
                 <Rocket size={14} />
                 Configure &amp; Launch
@@ -121,7 +120,7 @@ export function AgentLibraryPage() {
       {/* Desktop: table */}
       <div className="hidden md:block flex-1 overflow-auto rounded-xl border border-[#E2DDD5] bg-white shadow-sm min-h-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-[13px]">
+          <table className="vo-table w-full min-w-[720px] border-collapse text-[13px]">
             <thead className="sticky top-0 bg-[#F7F4EF] z-10">
               <tr className="border-b border-[#E2DDD5]">
                 <th className="text-left text-[11px] font-bold text-[#7A746C] uppercase tracking-wider px-5 py-3 whitespace-nowrap">
@@ -181,7 +180,7 @@ export function AgentLibraryPage() {
                       <button
                         type="button"
                         onClick={() => openConfigure(t.id as AgentType)}
-                        className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border-none bg-[#50381F] text-white text-[12px] font-semibold cursor-pointer hover:bg-[#3D2914] transition-colors whitespace-nowrap"
+                        className="vo-btn vo-btn-primary h-9 px-3.5 text-[12px] whitespace-nowrap"
                       >
                         <Rocket size={13} />
                         Configure &amp; Launch

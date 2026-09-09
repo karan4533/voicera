@@ -61,7 +61,7 @@ function KpiCard({
   trend?: string; accent: string;
 }) {
   return (
-    <div className="bg-[#FFFFFF] rounded-xl border p-5 flex flex-col gap-3" style={{ borderColor: "#E7DFC8" }}>
+    <div className="vo-card p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B645B" }}>{label}</span>
         <div className="h-9 w-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${accent}18` }}>

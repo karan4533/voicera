@@ -134,7 +134,7 @@ export function TeamPage() {
           <button
             type="button"
             onClick={() => setInviteOpen(true)}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border-none bg-[#50381F] text-white text-[13px] font-semibold cursor-pointer hover:bg-[#3D2914]"
+            className="vo-btn vo-btn-primary h-9"
           >
             <UserPlus size={14} />
             Invite user
@@ -143,7 +143,7 @@ export function TeamPage() {
       />
 
       <div className="rounded-xl border border-[#E2DDD5] bg-white overflow-hidden overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-[13px]">
+        <table className="vo-table w-full min-w-[720px] border-collapse text-[13px]">
           <thead className="bg-[#F7F4EF]">
             <tr className="border-b border-[#E2DDD5]">
               <th className="text-left text-[11px] font-bold text-[#7A746C] uppercase tracking-wider px-5 py-3">User</th>
@@ -252,17 +252,17 @@ export function TeamPage() {
 
       {inviteOpen && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
+          className="vo-overlay fixed inset-0 z-[200] flex items-center justify-center"
           onClick={() => setInviteOpen(false)}
         >
           <div
-            className="w-[400px] max-w-[92vw] rounded-xl bg-white p-6 shadow-xl"
+            className="vo-dialog w-[400px] max-w-[92vw] p-6"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="Invite user"
+            aria-labelledby="invite-user-title"
           >
-            <h2 className="m-0 mb-1 text-base font-bold text-[#1E1A14]">Invite user</h2>
+            <h2 id="invite-user-title" className="m-0 mb-1 text-base font-bold text-[#1E1A14]">Invite user</h2>
             <p className="m-0 mb-5 text-[13px] text-[#7A746C]">
               They receive an email invite. Assign a role and optional agent scope.
             </p>
@@ -273,7 +273,7 @@ export function TeamPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="colleague@company.com"
-              className="w-full h-10 px-3 mb-4 text-[13px] border border-[#E2DDD5] rounded-lg focus:outline-none focus:border-[#C9B99E]"
+              className="vo-input mb-4"
             />
 
             <label className="block text-[12px] font-medium text-[#7A746C] mb-1.5">Role</label>
@@ -303,14 +303,14 @@ export function TeamPage() {
               <button
                 type="button"
                 onClick={() => setInviteOpen(false)}
-                className="h-9 px-4 rounded-lg border border-[#E2DDD5] bg-white text-[13px] font-medium cursor-pointer"
+                className="vo-btn vo-btn-secondary h-9"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleInvite}
-                className="h-9 px-4 rounded-lg border-none bg-[#50381F] text-white text-[13px] font-semibold cursor-pointer hover:bg-[#3D2914]"
+                className="vo-btn vo-btn-primary h-9"
               >
                 Send invite
               </button>

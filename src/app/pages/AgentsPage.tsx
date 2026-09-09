@@ -3,9 +3,10 @@ import { useNavigate } from "react-router";
 import {
   Utensils, Landmark, ShoppingBag, Headphones, Stethoscope,
   Building2, Shield, Users, CreditCard, Cpu, Bot,
-  Search, X, Globe, Mic, CheckCircle2, Pause, Play, Copy, Pencil, Archive,
+  X, Globe, Mic, CheckCircle2, Pause, Play, Copy, Pencil, Archive,
 } from "lucide-react";
 import { PageHeader } from "../components/shared/PageHeader";
+import { EmptyState, SearchField } from "../components/shared/UiKit";
 import { useAgent } from "../context/AgentContext";
 import type { AgentDefinition, AgentStatus } from "../lib/types";
 
@@ -83,7 +84,7 @@ export function AgentsPage() {
               <button
                 type="button"
                 onClick={() => navigate("/dashboard/library")}
-                className="h-9 px-4 rounded-lg border-none bg-[#50381F] text-white text-[13px] font-semibold cursor-pointer hover:bg-[#3D2914]"
+                className="h-9 px-4 vo-btn vo-btn-primary text-[13px]"
               >
                 Browse Agent Library
               </button>
@@ -91,22 +92,17 @@ export function AgentsPage() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mb-4 shrink-0">
-          <div className="relative flex-1 min-w-0 sm:min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9E9890]" />
-            <input
-              type="text"
-              placeholder="Search agents by name, category…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 h-9 text-[13px] border border-[#E2DDD5] rounded-lg bg-white focus:outline-none focus:border-[#C9B99E] focus:ring-1 focus:ring-[#C9B99E]"
-            />
-          </div>
+        <div className="mb-4 shrink-0">
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            placeholder="Search agents by name, category…"
+          />
         </div>
 
         <div className="flex-1 overflow-auto rounded-xl border border-[#E2DDD5] bg-white shadow-sm">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-[13px]">
+          <table className="vo-table w-full min-w-[640px] border-collapse text-[13px]">
             <thead className="sticky top-0 bg-[#F7F4EF] z-10">
               <tr className="border-b border-[#E2DDD5]">
                 <th className="text-left text-[11px] font-bold text-[#7A746C] uppercase tracking-wider px-5 py-3">Agent</th>
@@ -119,16 +115,21 @@ export function AgentsPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-16 text-[#9E9890]">
-                    <Bot size={36} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-[14px] font-medium m-0 mb-2">No agent instances yet</p>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/dashboard/library")}
-                      className="text-[13px] font-semibold text-[#50381F] border-none bg-transparent cursor-pointer"
-                    >
-                      Launch one from the Agent Library →
-                    </button>
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={Bot}
+                      title="No agent instances yet"
+                      description="Launch a template from the Agent Library to create your first instance."
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => navigate("/dashboard/library")}
+                          className="vo-btn vo-btn-primary"
+                        >
+                          Browse Agent Library
+                        </button>
+                      }
+                    />
                   </td>
                 </tr>
               ) : (
