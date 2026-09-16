@@ -72,7 +72,3 @@ Production builds never use mock mode even if `VITE_USE_MOCK=true`.
 - Customer console: `/dashboard`
 - Admin console: `/admin`
 - Login: `/login`
-
-## License / attributions
-
-See [ATTRIBUTIONS.md](./ATTRIBUTIONS.md) for third-party credits.
