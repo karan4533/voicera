@@ -9,8 +9,8 @@ import { useAgent } from "../context/AgentContext";
 import { AgentSwitcher } from "../components/AgentSwitcher";
 import { NotificationBell } from "../components/NotificationBell";
 import { CORE_SETUP_NAV, OPERATIONS_NAV, TENANT_ADMIN_NAV } from "../lib/workflow";
-import { getSystemHealth } from "../lib/api";
-import type { AgentType } from "../lib/types";
+import { getSystemHealth, getFriendlyApiMessage } from "../lib/api";
+import type { AgentType, SystemHealth } from "../lib/types";
 import { ConfirmDialog } from "../components/shared/UiKit";
 import heuristicLabsLogoLight from "../../assets/heuristic-labs-logo-light.png";
 
@@ -65,7 +65,9 @@ export function DashboardLayout() {
   const { setAgent } = useAgent();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [health, setHealth] = useState({ status: "healthy", activeCalls: 0, avgLatency: 420 });
+  const [health, setHealth] = useState<SystemHealth>({ status: "healthy", activeCalls: 0, avgLatency: 420 });
+  const [healthReachable, setHealthReachable] = useState(true);
+  const [healthError, setHealthError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [tenantPicker, setTenantPicker] = useState(false);
@@ -123,10 +125,52 @@ export function DashboardLayout() {
     items.filter((item) => isAdmin || !item.adminOnly);
 
   useEffect(() => {
-    const load = () => getSystemHealth().then(setHealth);
-    load();
-    const id = setInterval(load, 5000);
-    return () => clearInterval(id);
+    let cancelled = false;
+    let timer: number | undefined;
+    let consecutiveFailures = 0;
+
+    const schedule = (delayMs: number) => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void load();
+      }, delayMs);
+    };
+
+    const load = async () => {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        if (!cancelled) {
+          consecutiveFailures += 1;
+          setHealthReachable(false);
+          setHealthError("You are offline.");
+          setHealth((h) => ({ ...h, status: "down" }));
+        }
+        if (!cancelled) schedule(15_000);
+        return;
+      }
+      try {
+        const next = await getSystemHealth();
+        if (cancelled) return;
+        consecutiveFailures = 0;
+        setHealth(next);
+        setHealthReachable(true);
+        setHealthError(null);
+        schedule(next.status === "down" ? 10_000 : 5_000);
+      } catch (err) {
+        if (cancelled) return;
+        consecutiveFailures += 1;
+        setHealthReachable(false);
+        setHealthError(getFriendlyApiMessage(err));
+        setHealth((h) => ({ ...h, status: "down", activeCalls: 0 }));
+        schedule(consecutiveFailures >= 2 ? 15_000 : 8_000);
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, []);
 
   // Close sidebar on Escape key
@@ -323,10 +367,33 @@ export function DashboardLayout() {
             </div>
 
             <div className="flex items-center gap-3 sm:gap-5">
-              <div className="flex items-center gap-1.5" title={health.status === "healthy" ? "System healthy" : "System degraded"}>
-                <div className={`h-2 w-2 rounded-full ${health.status === "healthy" ? "bg-[#22C55E]" : "bg-[#F59E0B]"}`} />
+              <div
+                className="flex items-center gap-1.5"
+                title={
+                  !healthReachable
+                    ? (healthError ?? "Backend unreachable")
+                    : health.status === "healthy"
+                      ? "System healthy"
+                      : health.status === "down"
+                        ? "System down"
+                        : "System degraded"
+                }
+              >
+                <div
+                  className={`h-2 w-2 rounded-full ${
+                    !healthReachable || health.status === "down"
+                      ? "bg-[#DC2626]"
+                      : health.status === "healthy"
+                        ? "bg-[#22C55E]"
+                        : "bg-[#F59E0B]"
+                  }`}
+                />
                 <span className="text-[12px] font-medium text-[#7A746C] hidden sm:inline">
-                  {health.status === "healthy" ? "System Healthy" : "Degraded"}
+                  {!healthReachable || health.status === "down"
+                    ? "Service Unavailable"
+                    : health.status === "healthy"
+                      ? "System Healthy"
+                      : "Degraded"}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -338,6 +405,22 @@ export function DashboardLayout() {
             </div>
           </div>
         </header>
+
+        {(!healthReachable || health.status === "down" || health.status === "degraded") && (
+          <div
+            className={`shrink-0 px-4 sm:px-6 py-2.5 text-[13px] border-b ${
+              !healthReachable || health.status === "down"
+                ? "bg-[#FEF2F2] border-[#FECACA] text-[#991B1B]"
+                : "bg-[#FFFBEB] border-[#FDE68A] text-[#92400E]"
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {!healthReachable || health.status === "down"
+              ? (healthError ?? "Backend service is unavailable. Data may be outdated — try again shortly.")
+              : "System is degraded. Some features may be slow or incomplete."}
+          </div>
+        )}
 
         <main id="main-content" className="flex-1 overflow-auto p-4 sm:p-6 lg:p-7 vo-page" tabIndex={-1}>
           {noWorkspace ? (

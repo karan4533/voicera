@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
   Phone, Search, Plus, Upload, X, ChevronDown,
   CheckCircle2, Clock, PhoneOff, RefreshCw,
   User, MapPin, Tag, FileText, History, Download, Play, Pause,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getReminderContacts,
   addReminderContact,
@@ -13,10 +14,13 @@ import {
   getCampaignStatus,
   setCampaignStatus,
   getCampaignEta,
+  getFriendlyApiMessage,
 } from "../lib/api";
 import { parseCsv } from "../lib/csv";
 import type { ReminderContact, ReminderDomain, ReminderStatus, CampaignState } from "../lib/types";
 import { useAgent } from "../context/AgentContext";
+import { LoadErrorPanel } from "../components/shared/UiKit";
+import { safeLog } from "../lib/safeLog";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -106,6 +110,7 @@ export function CallRemindersPage() {
   const { agent, agentLabel } = useAgent();
   const [contacts, setContacts] = useState<ReminderContact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -138,11 +143,27 @@ export function CallRemindersPage() {
   const attempted = completed + inCall + contacts.filter(c => c.domain === agent && c.status === "no-answer").length;
   const connectRate = attempted > 0 ? Math.round((completed / attempted) * 100) : 0;
 
+  const loadContacts = useCallback(async () => {
+    try {
+      setLoadError(null);
+      const [data, state] = await Promise.all([
+        getReminderContacts(),
+        getCampaignStatus(),
+      ]);
+      setContacts(data);
+      setCampaignStateLocal(state);
+    } catch (err) {
+      safeLog.warn("campaigns load failed", err);
+      setLoadError(getFriendlyApiMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Load
   useEffect(() => {
-    getReminderContacts().then((data) => { setContacts(data); setLoading(false); });
-    getCampaignStatus().then(setCampaignStateLocal);
-  }, []);
+    void loadContacts();
+  }, [loadContacts]);
 
   useEffect(() => {
     if (campaignState !== "running") {
@@ -157,9 +178,13 @@ export function CallRemindersPage() {
     };
     setCampaignEta(computeLocal());
     const tick = () => {
-      getCampaignEta().then((eta) => {
-        setCampaignEta(eta === "—" ? computeLocal() : eta);
-      });
+      getCampaignEta()
+        .then((eta) => {
+          setCampaignEta(eta === "—" ? computeLocal() : eta);
+        })
+        .catch(() => {
+          setCampaignEta(computeLocal());
+        });
     };
     tick();
     const id = setInterval(tick, 3000);
@@ -167,12 +192,14 @@ export function CallRemindersPage() {
   }, [campaignState, pending]);
 
   const handleCampaignToggle = async () => {
-    if (campaignState === "running") {
-      await setCampaignStatus("paused");
-      setCampaignStateLocal("paused");
-    } else {
-      await setCampaignStatus("running");
-      setCampaignStateLocal("running");
+    const next = campaignState === "running" ? "paused" : "running";
+    const prev = campaignState;
+    setCampaignStateLocal(next);
+    try {
+      await setCampaignStatus(next);
+    } catch (err) {
+      setCampaignStateLocal(prev);
+      toast.error(getFriendlyApiMessage(err));
     }
   };
 
@@ -188,27 +215,39 @@ export function CallRemindersPage() {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const handleStatusUpdate = async (id: string, status: ReminderStatus) => {
-    await updateReminderStatus(id, status);
-    setContacts((prev) => prev.map((c) => c.id === id ? { ...c, status } : c));
-    if (detailContact?.id === id) setDetailContact((prev) => prev ? { ...prev, status } : null);
+    try {
+      await updateReminderStatus(id, status);
+      setContacts((prev) => prev.map((c) => c.id === id ? { ...c, status } : c));
+      if (detailContact?.id === id) setDetailContact((prev) => prev ? { ...prev, status } : null);
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
+    }
   };
 
   /** Reschedule: move to now + 4 hours, no popup needed */
   const handleReschedule = async (c: ReminderContact) => {
     const newTime = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
-    await updateReminderStatus(c.id, "rescheduled");
-    setContacts((prev) =>
-      prev.map((x) => x.id === c.id ? { ...x, status: "rescheduled", scheduledAt: newTime } : x)
-    );
-    if (detailContact?.id === c.id)
-      setDetailContact((prev) => prev ? { ...prev, status: "rescheduled", scheduledAt: newTime } : null);
+    try {
+      await updateReminderStatus(c.id, "rescheduled");
+      setContacts((prev) =>
+        prev.map((x) => x.id === c.id ? { ...x, status: "rescheduled", scheduledAt: newTime } : x)
+      );
+      if (detailContact?.id === c.id)
+        setDetailContact((prev) => prev ? { ...prev, status: "rescheduled", scheduledAt: newTime } : null);
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
+    }
   };
 
   /** Start Call → navigate to Live Calls, set status to "calling" (In Call) */
   const handleStartCall = async (c: ReminderContact) => {
-    await updateReminderStatus(c.id, "calling");
-    setContacts((prev) => prev.map((x) => x.id === c.id ? { ...x, status: "calling" } : x));
-    navigate(`/dashboard/live-calls?start=${c.id}`);
+    try {
+      await updateReminderStatus(c.id, "calling");
+      setContacts((prev) => prev.map((x) => x.id === c.id ? { ...x, status: "calling" } : x));
+      navigate(`/dashboard/live-calls?start=${c.id}`);
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
+    }
   };
 
   /** End Call → status becomes "completed" */
@@ -234,6 +273,8 @@ export function CallRemindersPage() {
       setContacts((prev) => [newContact, ...prev]);
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
     } finally {
       setSaving(false);
     }
@@ -255,6 +296,9 @@ export function CallRemindersPage() {
       setImportOpen(false);
       setImportFile(null);
       setImportPreview([]);
+      toast.success(`Imported ${imported.length} contacts`);
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
     } finally {
       setImporting(false);
     }
@@ -306,6 +350,18 @@ export function CallRemindersPage() {
             </div>
           </div>
         </div>
+
+        {loadError && (
+          <div className="mb-4 shrink-0">
+            <LoadErrorPanel
+              message={loadError}
+              onRetry={() => {
+                setLoading(true);
+                void loadContacts();
+              }}
+            />
+          </div>
+        )}
 
         {/* ── Stats strip ── */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5 shrink-0">

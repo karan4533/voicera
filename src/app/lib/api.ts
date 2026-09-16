@@ -50,24 +50,174 @@ if (isProd && import.meta.env.VITE_USE_MOCK === "true") {
   safeLog.warn("VITE_USE_MOCK=true is ignored in production builds.");
 }
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) ?? "http://localhost:8000";
+const DEFAULT_TIMEOUT_MS = 12_000;
+const RETRY_STATUSES = new Set([408, 429, 502, 503, 504]);
+
+/** Typed API failure so pages can branch on status / network / timeout. */
+export class ApiError extends Error {
+  readonly status: number | null;
+  readonly path: string;
+  readonly kind: "http" | "network" | "timeout" | "abort";
+
+  constructor(
+    message: string,
+    opts: { status?: number | null; path?: string; kind?: ApiError["kind"] },
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = opts.status ?? null;
+    this.path = opts.path ?? "";
+    this.kind = opts.kind ?? "http";
+  }
+}
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError;
+}
+
+/** User-facing copy for banners / toasts. */
+export function getFriendlyApiMessage(err: unknown): string {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return "You appear to be offline. Check your connection and try again.";
+  }
+  if (isApiError(err)) {
+    if (err.kind === "timeout") return "The server took too long to respond. Please try again.";
+    if (err.kind === "network") return "Cannot reach the server. It may be down or unreachable.";
+    if (err.status === 401) return "Your session expired. Please sign in again.";
+    if (err.status === 403) return "You do not have permission for this action.";
+    if (err.status === 404) return "The requested resource was not found.";
+    if (err.status !== null && err.status >= 500) {
+      return "The service is temporarily unavailable. Please try again shortly.";
+    }
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return "Something went wrong. Please try again.";
+}
+
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/** Register once from App (logout + navigate to /login). */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  unauthorizedHandler = handler;
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function mergeAbortSignals(a?: AbortSignal | null, b?: AbortSignal | null): AbortSignal | undefined {
+  if (!a && !b) return undefined;
+  if (a && !b) return a;
+  if (!a && b) return b;
+  const ctrl = new AbortController();
+  const onAbort = () => ctrl.abort();
+  a!.addEventListener("abort", onAbort);
+  b!.addEventListener("abort", onAbort);
+  if (a!.aborted || b!.aborted) ctrl.abort();
+  return ctrl.signal;
+}
+
+interface ApiFetchOptions extends RequestInit {
+  /** Override default 12s timeout. */
+  timeoutMs?: number;
+  /** Extra retries for idempotent GET (default 1). */
+  retries?: number;
+  /** Skip JSON parse (e.g. 204). */
+  emptyResponse?: boolean;
+}
 
 /**
- * Authenticated fetch wrapper — attaches Bearer token from the current session.
- * Throws on HTTP errors so callers can handle them uniformly.
+ * Authenticated fetch — Bearer token, timeout, GET retry on transient errors,
+ * and 401 → registered unauthorized handler (logout / login redirect).
  */
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const session = getSession();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
-    ...(options?.headers as Record<string, string> | undefined),
-  };
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${options?.method ?? "GET"} ${path} failed [${res.status}]: ${body}`);
+async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const {
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    retries,
+    emptyResponse,
+    signal: userSignal,
+    headers: userHeaders,
+    ...rest
+  } = options;
+
+  const method = (rest.method ?? "GET").toUpperCase();
+  const maxAttempts = method === "GET" ? 1 + (retries ?? 1) : 1 + (retries ?? 0);
+
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) await sleep(400 * attempt);
+
+    const timeoutCtrl = new AbortController();
+    const timer = window.setTimeout(() => timeoutCtrl.abort(), timeoutMs);
+    const signal = mergeAbortSignals(userSignal, timeoutCtrl.signal);
+
+    try {
+      const session = getSession();
+      const headers: Record<string, string> = {
+        ...(rest.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
+        ...(userHeaders as Record<string, string> | undefined),
+      };
+
+      const res = await fetch(`${BASE_URL}${path}`, { ...rest, method, headers, signal });
+
+      if (res.status === 401) {
+        unauthorizedHandler?.();
+        throw new ApiError("Unauthorized", { status: 401, path, kind: "http" });
+      }
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        const err = new ApiError(
+          `API ${method} ${path} failed [${res.status}]: ${body}`,
+          { status: res.status, path, kind: "http" },
+        );
+        if (attempt < maxAttempts - 1 && RETRY_STATUSES.has(res.status)) {
+          lastError = err;
+          continue;
+        }
+        throw err;
+      }
+
+      if (emptyResponse || res.status === 204) return undefined as T;
+      const text = await res.text();
+      if (!text.trim()) return undefined as T;
+      return JSON.parse(text) as T;
+    } catch (err) {
+      if (isApiError(err)) throw err;
+
+      const aborted = err instanceof DOMException && err.name === "AbortError";
+      if (aborted && userSignal?.aborted) {
+        throw new ApiError("Request cancelled", { path, kind: "abort" });
+      }
+      if (aborted) {
+        const timeoutErr = new ApiError("Request timed out", { path, kind: "timeout" });
+        if (attempt < maxAttempts - 1) {
+          lastError = timeoutErr;
+          continue;
+        }
+        throw timeoutErr;
+      }
+
+      const networkErr = new ApiError(
+        err instanceof Error ? err.message : "Network error",
+        { path, kind: "network" },
+      );
+      if (attempt < maxAttempts - 1) {
+        lastError = networkErr;
+        continue;
+      }
+      throw networkErr;
+    } finally {
+      window.clearTimeout(timer);
+    }
   }
-  return res.json() as Promise<T>;
+
+  throw lastError instanceof Error
+    ? lastError
+    : new ApiError("Request failed", { path, kind: "network" });
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -201,17 +351,14 @@ export async function getKnowledgeFiles(): Promise<KnowledgeFile[]> {
  */
 export async function uploadKnowledgeFile(file: File, category: "menu" | "faq"): Promise<KnowledgeFile> {
   if (USE_MOCK) return mock.uploadKnowledgeFile(file, category);
-  const session = getSession();
   const form = new FormData();
   form.append("file", file);
   form.append("category", category);
-  const res = await fetch(`${BASE_URL}/kb/files/upload`, {
+  return apiFetch<KnowledgeFile>("/kb/files/upload", {
     method: "POST",
-    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
     body: form,
+    timeoutMs: 60_000,
   });
-  if (!res.ok) throw new Error(`Upload failed [${res.status}]`);
-  return res.json();
 }
 
 /**
@@ -302,16 +449,13 @@ export async function uploadCampaignCustomers(file: File): Promise<CampaignCusto
     const rows = parseCsv(text);
     return mock.importCampaignCsv(rows);
   }
-  const session = getSession();
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${BASE_URL}/outbound/customers/upload`, {
+  return apiFetch<CampaignCustomer[]>("/outbound/customers/upload", {
     method: "POST",
-    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
     body: form,
+    timeoutMs: 60_000,
   });
-  if (!res.ok) throw new Error(`Upload failed [${res.status}]`);
-  return res.json();
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -401,16 +545,13 @@ export async function bulkImportReminders(
     const rows = parseCsv(text);
     return mock.bulkImportReminders(rows, domain);
   }
-  const session = getSession();
   const form = new FormData();
   form.append("file", file);
   form.append("domain", domain);
-  const res = await fetch(`${BASE_URL}/reminders/bulk-import`, {
+  return apiFetch<ReminderContact[]>("/reminders/bulk-import", {
     method: "POST",
-    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
     body: form,
+    timeoutMs: 60_000,
   });
-  if (!res.ok) throw new Error(`Bulk import failed [${res.status}]`);
-  return res.json();
 }
 

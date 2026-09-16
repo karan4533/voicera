@@ -7,6 +7,7 @@ Multi-tenant Voice AI dashboard (React + Vite) for Heuristic Labs.
 | Document | Description |
 |----------|-------------|
 | [OVERALL_DOCUMENTATION.md](./OVERALL_DOCUMENTATION.md) | Master architecture & product flow |
+| [STRUCTURE.md](./STRUCTURE.md) | Canonical `src/` folder map |
 | [FRONTEND_SOLUTION_DOC.md](./FRONTEND_SOLUTION_DOC.md) | Frontend solution detail |
 | [BACKEND_INTEGRATION_GUIDE.md](./BACKEND_INTEGRATION_GUIDE.md) | Connect the REST backend |
 

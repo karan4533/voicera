@@ -1,8 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { AuthProvider } from "./context/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AgentProvider } from "./context/AgentContext";
 import { RoleRoute } from "./components/RoleRoute";
 import { LoginScreen } from "./components/LoginScreen";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { OfflineBanner } from "./components/OfflineBanner";
+import { setUnauthorizedHandler } from "./lib/api";
 
 // ── Customer workspace ─────────────────────────────────────────────────────────
 import { DashboardLayout } from "./layouts/DashboardLayout";
@@ -27,7 +31,6 @@ import { SecurityPage } from "./pages/admin/SecurityPage";
 import { UsagePage } from "./pages/UsagePage";
 
 import { Toaster } from "sonner";
-import { useAuth } from "./context/AuthContext";
 
 /** Redirects already-authenticated users away from the login page. */
 function GuestRoute({ children }: { children: React.ReactNode }) {
@@ -45,106 +48,126 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Registers API 401 → logout + /login once Auth + Router are mounted. */
+function ApiUnauthorizedBridge() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      logout();
+      navigate("/login", { replace: true });
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [logout, navigate]);
+
+  return null;
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AgentProvider>
-        <BrowserRouter>
-          <Toaster
-            theme="light"
-            position="top-right"
-            toastOptions={{
-              style: {
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontSize: 13,
-                border: "1px solid #E2DDD5",
-                borderRadius: 12,
-              },
-            }}
-          />
-          <Routes>
-            {/* ── Public ───────────────────────────────────────────────────── */}
-            <Route
-              path="/login"
-              element={
-                <GuestRoute>
-                  <LoginScreen />
-                </GuestRoute>
-              }
+    <ErrorBoundary name="app-root">
+      <AuthProvider>
+        <AgentProvider>
+          <BrowserRouter>
+            <ApiUnauthorizedBridge />
+            <OfflineBanner />
+            <Toaster
+              theme="light"
+              position="top-right"
+              toastOptions={{
+                style: {
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: 13,
+                  border: "1px solid #E2DDD5",
+                  borderRadius: 12,
+                },
+              }}
             />
+            <ErrorBoundary name="routes">
+              <Routes>
+                {/* ── Public ───────────────────────────────────────────────────── */}
+                <Route
+                  path="/login"
+                  element={
+                    <GuestRoute>
+                      <LoginScreen />
+                    </GuestRoute>
+                  }
+                />
 
-            {/* ── Platform Admin Console ───────────────────────────────────── */}
-            <Route
-              path="/admin"
-              element={
-                <RoleRoute allowedRoles={["platform_admin"]}>
-                  <AdminLayout />
-                </RoleRoute>
-              }
-            >
-              <Route index element={<AdminOverviewPage />} />
-              <Route path="customers"   element={<CustomerAccountsPage />} />
-              <Route path="subscriptions" element={<SubscriptionsPage />} />
-              <Route path="analytics"   element={<PlatformAnalyticsPage />} />
-              <Route path="system-health" element={<SystemHealthPage />} />
-              <Route path="security"    element={<SecurityPage />} />
-            </Route>
+                {/* ── Platform Admin Console ───────────────────────────────────── */}
+                <Route
+                  path="/admin"
+                  element={
+                    <RoleRoute allowedRoles={["platform_admin"]}>
+                      <AdminLayout />
+                    </RoleRoute>
+                  }
+                >
+                  <Route index element={<AdminOverviewPage />} />
+                  <Route path="customers"   element={<CustomerAccountsPage />} />
+                  <Route path="subscriptions" element={<SubscriptionsPage />} />
+                  <Route path="analytics"   element={<PlatformAnalyticsPage />} />
+                  <Route path="system-health" element={<SystemHealthPage />} />
+                  <Route path="security"    element={<SecurityPage />} />
+                </Route>
 
-            {/* ── Customer Workspace ───────────────────────────────────────── */}
-            <Route
-              path="/dashboard"
-              element={
-                <RoleRoute allowedRoles={["customer_admin", "customer_user"]}>
-                  <DashboardLayout />
-                </RoleRoute>
-              }
-            >
-              {/* PRD: Login → Dashboard → Library → Configure → My Agents
-                  Ops: Live Calls ↔ Call Analytics ↔ Outbound Campaign · Team */}
-              <Route index element={<DashboardPage />} />
-              <Route path="library" element={<AgentLibraryPage />} />
-              <Route
-                path="configure"
-                element={
-                  <RoleRoute allowedRoles={["customer_admin"]}>
-                    <CustomizePage />
-                  </RoleRoute>
-                }
-              />
-              <Route path="agents" element={<AgentsPage />} />
-              <Route path="live-calls" element={<LiveCallsPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="knowledge" element={<KnowledgePage />} />
-              <Route
-                path="campaigns"
-                element={
-                  <RoleRoute allowedRoles={["customer_admin"]}>
-                    <CallRemindersPage />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="team"
-                element={
-                  <RoleRoute allowedRoles={["customer_admin"]}>
-                    <TeamPage />
-                  </RoleRoute>
-                }
-              />
-              <Route path="usage" element={<UsagePage />} />
+                {/* ── Customer Workspace ───────────────────────────────────────── */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <RoleRoute allowedRoles={["customer_admin", "customer_user"]}>
+                      <DashboardLayout />
+                    </RoleRoute>
+                  }
+                >
+                  <Route index element={<DashboardPage />} />
+                  <Route path="library" element={<AgentLibraryPage />} />
+                  <Route
+                    path="configure"
+                    element={
+                      <RoleRoute allowedRoles={["customer_admin"]}>
+                        <CustomizePage />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route path="agents" element={<AgentsPage />} />
+                  <Route path="live-calls" element={<LiveCallsPage />} />
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="knowledge" element={<KnowledgePage />} />
+                  <Route
+                    path="campaigns"
+                    element={
+                      <RoleRoute allowedRoles={["customer_admin"]}>
+                        <CallRemindersPage />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route
+                    path="team"
+                    element={
+                      <RoleRoute allowedRoles={["customer_admin"]}>
+                        <TeamPage />
+                      </RoleRoute>
+                    }
+                  />
+                  <Route path="usage" element={<UsagePage />} />
 
-              {/* Legacy redirects */}
-              <Route path="customize" element={<Navigate to="/dashboard/configure" replace />} />
-              <Route path="call-reminders" element={<Navigate to="/dashboard/campaigns" replace />} />
-              <Route path="monitoring" element={<Navigate to="/dashboard" replace />} />
-              <Route path="settings" element={<Navigate to="/dashboard/configure" replace />} />
-            </Route>
+                  {/* Legacy redirects */}
+                  <Route path="customize" element={<Navigate to="/dashboard/configure" replace />} />
+                  <Route path="call-reminders" element={<Navigate to="/dashboard/campaigns" replace />} />
+                  <Route path="monitoring" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="settings" element={<Navigate to="/dashboard/configure" replace />} />
+                </Route>
 
-            {/* ── Catch-all → login (RoleRoute handles authenticated redirects) ─ */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AgentProvider>
-    </AuthProvider>
+                {/* ── Catch-all → login (RoleRoute handles authenticated redirects) ─ */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </ErrorBoundary>
+          </BrowserRouter>
+        </AgentProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

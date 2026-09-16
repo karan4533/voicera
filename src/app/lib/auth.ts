@@ -2,7 +2,7 @@
  * auth.ts — Shared auth types + synchronous session cache
  *
  * Types define the AuthSession shape used throughout the app
- * (AuthContext, api.ts, ProtectedRoute). The mock implementation
+ * (AuthContext, api.ts, RoleRoute). The mock implementation
  * has been replaced by Firebase Authentication — see AuthContext.tsx
  * and firebase.ts.
  *

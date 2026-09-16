@@ -9,6 +9,7 @@ This is the **master map** of the Voicera frontend. Use it first; then open the 
 | Document | Audience | Purpose |
 |----------|----------|---------|
 | **This file** | Everyone | Big picture: product, flow, folders, modes |
+| [`STRUCTURE.md`](./STRUCTURE.md) | Engineers | Canonical `src/` tree after cleanup |
 | [`FRONTEND_SOLUTION_DOC.md`](./FRONTEND_SOLUTION_DOC.md) | Engineers / PMs | Stack, routes, contexts, pages, design decisions |
 | [`BACKEND_INTEGRATION_GUIDE.md`](./BACKEND_INTEGRATION_GUIDE.md) | Backend team | REST endpoints, env, mock → live switch |
 | [`README.md`](./README.md) | Developers | How to install and run locally |

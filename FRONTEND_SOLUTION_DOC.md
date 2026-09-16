@@ -39,46 +39,28 @@ The SPA uses **Firebase Authentication** (or local **demo auth** when Firebase e
 
 ## 3. Project Structure
 
+See [`STRUCTURE.md`](./STRUCTURE.md) for the full tree. Summary:
+
 ```
-voicera/
-├── src/
-│   ├── main.tsx                      # Entry — mounts App
-│   ├── app/
-│   │   ├── App.tsx                   # AuthProvider → AgentProvider → routes
-│   │   ├── context/
-│   │   │   ├── AuthContext.tsx       # Session, demo/Firebase login, switchTenant
-│   │   │   └── AgentContext.tsx      # Active agent + defs from subscriptions
-│   │   ├── layouts/
-│   │   │   ├── DashboardLayout.tsx   # Customer shell + tenant gate
-│   │   │   └── AdminLayout.tsx       # Platform admin shell
-│   │   ├── pages/                    # Customer pages
-│   │   │   └── admin/                # Admin pages
-│   │   ├── components/
-│   │   │   ├── LoginScreen.tsx
-│   │   │   ├── RoleRoute.tsx         # Primary role + suspended guard
-│   │   │   ├── ProtectedRoute.tsx    # Session-only guard (legacy/simple)
-│   │   │   ├── AgentSwitcher.tsx
-│   │   │   ├── shared/               # UiKit, PageHeader, StatusBadge
-│   │   │   └── ui/                   # Shadcn/Radix primitives
-│   │   └── lib/
-│   │       ├── firebase.ts
-│   │       ├── auth.ts               # AuthSession + sync token cache
-│   │       ├── rbac.ts
-│   │       ├── tenantMemberships.ts  # Demo memberships
-│   │       ├── api.ts                # ★ Page data API facade
-│   │       ├── mock-api.ts
-│   │       ├── adminApi.ts
-│   │       ├── workflow.ts           # Nav groups
-│   │       ├── notifications.ts
-│   │       └── types.ts
-│   ├── assets/
-│   └── styles/
-├── .env.example
-├── OVERALL_DOCUMENTATION.md
-├── BACKEND_INTEGRATION_GUIDE.md
-├── vite.config.ts
-└── package.json
+voicera/src/
+├── main.tsx
+├── assets/
+├── styles/                     # index.css → fonts, tailwind, theme
+└── app/
+    ├── App.tsx                 # AuthProvider → AgentProvider → routes
+    ├── context/                # AuthContext, AgentContext
+    ├── layouts/                # DashboardLayout, AdminLayout
+    ├── pages/                  # Customer pages
+    │   └── admin/              # Admin pages + CreateAccountModal
+    ├── components/
+    │   ├── LoginScreen, RoleRoute, AgentSwitcher, …
+    │   ├── ErrorBoundary, OfflineBanner
+    │   ├── shared/             # UiKit, PageHeader
+    │   └── ui/                 # badge, button, card, checkbox, input, select, sheet, table
+    └── lib/                    # api, auth, firebase, rbac, tenants, …
 ```
+
+Route guard is **`RoleRoute`** only (legacy `ProtectedRoute` removed).
 
 ---
 

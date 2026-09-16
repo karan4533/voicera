@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Search, Download } from "lucide-react";
-import { getAnalyticsMetrics, getCallDetails, toggleCallActionItem } from "../lib/api";
+import { toast } from "sonner";
+import { getAnalyticsMetrics, getCallDetails, toggleCallActionItem, getFriendlyApiMessage } from "../lib/api";
 import type { CallDetail } from "../lib/types";
 import { useAgent } from "../context/AgentContext";
+import { LoadErrorPanel } from "../components/shared/UiKit";
+import { safeLog } from "../lib/safeLog";
 
 import { PageHeader } from "../components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -37,6 +40,7 @@ export function AnalyticsPage() {
 
   const [calls, setCalls] = useState<CallDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { agent, agentLabel } = useAgent();
 
@@ -48,24 +52,48 @@ export function AnalyticsPage() {
   // Selection for Sheet
   const [selectedCall, setSelectedCall] = useState<CallDetail | null>(null);
 
-  useEffect(() => {
-    getAnalyticsMetrics(agent).then(setMetrics);
+  const loadMetrics = useCallback(async () => {
+    try {
+      const m = await getAnalyticsMetrics(agent);
+      setMetrics(m);
+    } catch (err) {
+      safeLog.warn("analytics metrics failed", err);
+      // Keep last metrics; surface via list error if calls also fail
+    }
   }, [agent]);
 
-  useEffect(() => {
+  const loadCalls = useCallback(async () => {
     setLoading(true);
-    getCallDetails({
-      search,
-      agent,
-      language: languageFilter,
-      outcome: outcomeFilter,
-    }).then((data) => {
+    setError(null);
+    try {
+      const data = await getCallDetails({
+        search,
+        agent,
+        language: languageFilter,
+        outcome: outcomeFilter,
+      });
       setCalls(data);
+    } catch (err) {
+      safeLog.warn("analytics calls failed", err);
+      setError(getFriendlyApiMessage(err));
+      setCalls([]);
+    } finally {
       setLoading(false);
-    });
+    }
   }, [search, agent, languageFilter, outcomeFilter]);
 
+  useEffect(() => {
+    void loadMetrics();
+  }, [loadMetrics]);
+
+  useEffect(() => {
+    void loadCalls();
+  }, [loadCalls]);
+
   const handleToggleAction = async (callId: string, actionId: string) => {
+    const prevSelected = selectedCall;
+    const prevCalls = calls;
+
     // Optimistic update
     if (selectedCall && selectedCall.id === callId) {
       const newCall = { ...selectedCall };
@@ -84,7 +112,13 @@ export function AnalyticsPage() {
       return c;
     }));
 
-    await toggleCallActionItem(callId, actionId);
+    try {
+      await toggleCallActionItem(callId, actionId);
+    } catch (err) {
+      setSelectedCall(prevSelected);
+      setCalls(prevCalls);
+      toast.error(getFriendlyApiMessage(err));
+    }
   };
 
   const handleExportCSV = () => {
@@ -134,6 +168,12 @@ export function AnalyticsPage() {
         title="Call Analytics"
         subtitle={`Post-call review for ${agentLabel} — transcript, summary, sentiment, and action items`} 
       />
+
+      {error && (
+        <div className="mb-4">
+          <LoadErrorPanel message={error} onRetry={() => void loadCalls()} />
+        </div>
+      )}
 
       {/* Global Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -246,9 +286,13 @@ export function AnalyticsPage() {
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-[#7A746C]">Loading calls...</TableCell>
               </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-[#B91C1C]">Unable to load calls.</TableCell>
+              </TableRow>
             ) : calls.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-[#7A746C]">No calls found matching your filters.</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center text-[#7A746C]">No calls found matching your filters.</TableCell>
               </TableRow>
             ) : (
               calls.map((call) => (

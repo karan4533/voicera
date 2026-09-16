@@ -1,17 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   BookOpen, Upload, Trash2, RefreshCw, FileText,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "../components/shared/PageHeader";
-import { EmptyState, SearchField, SkeletonBlock, ConfirmDialog } from "../components/shared/UiKit";
+import { EmptyState, SearchField, SkeletonBlock, ConfirmDialog, LoadErrorPanel } from "../components/shared/UiKit";
 import { useAgent } from "../context/AgentContext";
 import {
   getKnowledgeFiles,
   uploadKnowledgeFile,
   deleteKnowledgeFile,
   reindexKnowledgeFile,
+  getFriendlyApiMessage,
 } from "../lib/api";
 import type { KnowledgeFile } from "../lib/types";
+import { safeLog } from "../lib/safeLog";
 
 function StatusPill({ status }: { status: KnowledgeFile["status"] }) {
   const map: Record<KnowledgeFile["status"], { label: string; color: string; bg: string }> = {
@@ -37,21 +40,31 @@ export function KnowledgePage() {
   const [category, setCategory] = useState<"menu" | "faq">("faq");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const reload = () => {
-    getKnowledgeFiles().then((data) => {
+  const reload = useCallback(async () => {
+    try {
+      setLoadError(null);
+      const data = await getKnowledgeFiles();
       setFiles(data);
+    } catch (err) {
+      safeLog.warn("knowledge load failed", err);
+      setLoadError(getFriendlyApiMessage(err));
+    } finally {
       setLoading(false);
-    });
-  };
+    }
+  }, []);
 
   useEffect(() => {
-    reload();
-    const id = setInterval(reload, 4000);
-    return () => clearInterval(id);
-  }, []);
+    void reload();
+    const id = window.setInterval(() => {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      void reload();
+    }, 4_000);
+    return () => window.clearInterval(id);
+  }, [reload]);
 
   const filtered = files.filter((f) => {
     const q = search.toLowerCase();
@@ -67,22 +80,33 @@ export function KnowledgePage() {
     try {
       const created = await uploadKnowledgeFile(file, category);
       setFiles((prev) => [created, ...prev]);
+      toast.success("File uploaded");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = getFriendlyApiMessage(err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteKnowledgeFile(id);
-    setFiles((prev) => prev.filter((f) => f.id !== id));
-    setDeleteId(null);
+    try {
+      await deleteKnowledgeFile(id);
+      setFiles((prev) => prev.filter((f) => f.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
+    }
   };
 
   const handleReindex = async (id: string) => {
-    await reindexKnowledgeFile(id);
-    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, status: "indexing" } : f)));
+    try {
+      await reindexKnowledgeFile(id);
+      setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, status: "indexing" } : f)));
+    } catch (err) {
+      toast.error(getFriendlyApiMessage(err));
+    }
   };
 
   return (
@@ -123,6 +147,18 @@ export function KnowledgePage() {
       {error && (
         <div className="mb-4 rounded-lg border border-[#FECACA] bg-[#FEE2E2] px-3 py-2 text-[13px] text-[#DC2626]">
           {error}
+        </div>
+      )}
+
+      {loadError && (
+        <div className="mb-4">
+          <LoadErrorPanel
+            message={loadError}
+            onRetry={() => {
+              setLoading(true);
+              void reload();
+            }}
+          />
         </div>
       )}
 

@@ -5,10 +5,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "../components/shared/PageHeader";
-import { MetricSkeleton } from "../components/shared/UiKit";
-import { getDashboardMetrics, getExtractedData, getCallDetails } from "../lib/api";
+import { MetricSkeleton, LoadErrorPanel } from "../components/shared/UiKit";
+import { getDashboardMetrics, getExtractedData, getCallDetails, getFriendlyApiMessage } from "../lib/api";
 import { useAgent } from "../context/AgentContext";
 import type { DashboardMetrics, ExtractedEntity, CallDetail } from "../lib/types";
+import { safeLog } from "../lib/safeLog";
 
 const CALL_VOLUME_DATA = [
   { day: "Mon", calls: 124, resolved: 108 },
@@ -91,24 +92,46 @@ export function DashboardPage() {
   const [actionItems, setActionItems] = useState<{ callId: string; caller: string; text: string }[]>([]);
   const [selectedCall, setSelectedCall] = useState<ExtractedEntity | null>(null);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    getDashboardMetrics().then(setMetrics);
-    getExtractedData().then(setExtractedData);
-    getCallDetails({ search: "", agent: String(agent), language: "all", outcome: "all" }).then((calls: CallDetail[]) => {
+  const load = useCallback(async () => {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setError("You are offline. Check your connection and try again.");
+      setLoading(false);
+      return;
+    }
+    try {
+      setError(null);
+      const [m, extracted, calls] = await Promise.all([
+        getDashboardMetrics(),
+        getExtractedData(),
+        getCallDetails({ search: "", agent: String(agent), language: "all", outcome: "all" }),
+      ]);
+      setMetrics(m);
+      setExtractedData(extracted);
       const open = calls.flatMap((c) =>
         c.actionItems
           .filter((a) => !a.done)
           .map((a) => ({ callId: c.id, caller: c.name, text: a.text })),
       );
       setActionItems(open.slice(0, 8));
-    });
+    } catch (err) {
+      safeLog.warn("dashboard load failed", err);
+      setError(getFriendlyApiMessage(err));
+    } finally {
+      setLoading(false);
+    }
   }, [agent]);
 
   useEffect(() => {
-    load();
-    const id = setInterval(load, 5000);
-    return () => clearInterval(id);
+    setLoading(true);
+    void load();
+    const id = window.setInterval(() => {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      void load();
+    }, 5_000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   const filtered = extractedData.filter((e) =>
@@ -133,16 +156,28 @@ export function DashboardPage() {
         subtitle="Tenant-wide performance across all agents — KPIs, trends, recent calls, and action items"
       />
 
-      {!metrics ? (
+      {error && (
+        <div className="mb-4">
+          <LoadErrorPanel
+            message={error}
+            onRetry={() => {
+              setLoading(true);
+              void load();
+            }}
+          />
+        </div>
+      )}
+
+      {loading && !metrics ? (
         <MetricSkeleton />
-      ) : (
+      ) : metrics ? (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
         <KpiCard icon={Phone} label="Total calls" value={metrics.totalCalls.toLocaleString()} sub={`${metrics.todayCalls ?? 0} today`} iconColor="#50381F" />
         <KpiCard icon={Clock} label="Avg call duration" value={metrics.avgDuration ?? "—"} iconColor="#2563EB" />
         <KpiCard icon={CheckCircle} label="Success / qualification" value={`${metrics.resolutionRate ?? 0}%`} iconColor="#16A34A" />
         <KpiCard icon={TrendingUp} label="Connected calls" value={(metrics.connectedCalls ?? 0).toLocaleString()} iconColor="#D97706" />
       </div>
-      )}
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <SectionCard title="Call volume trend">

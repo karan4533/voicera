@@ -1,5 +1,38 @@
 import type { ReactNode } from "react";
-import { Search, X } from "lucide-react";
+import { AlertCircle, Search, X } from "lucide-react";
+
+/** Standard data-load failure: message + optional Retry (never leave infinite skeleton). */
+export function LoadErrorPanel({
+  message,
+  onRetry,
+  compact = false,
+}: {
+  message: string;
+  onRetry?: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-xl border border-[#FECACA] bg-[#FEE2E2] ${compact ? "p-3" : "p-4"}`}
+      role="alert"
+    >
+      <AlertCircle size={16} className="shrink-0 mt-0.5 text-[#DC2626]" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="m-0 text-[13px] font-semibold text-[#991B1B]">Couldn’t load data</p>
+        <p className="m-0 mt-1 text-[13px] text-[#B91C1C] leading-relaxed">{message}</p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-3 h-8 px-3 rounded-lg border border-[#FECACA] bg-white text-[12px] font-semibold text-[#991B1B] cursor-pointer hover:bg-[#FEF2F2]"
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function EmptyState({
   icon: Icon,
