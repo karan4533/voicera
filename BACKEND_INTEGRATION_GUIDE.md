@@ -1,112 +1,171 @@
 # Voicera Frontend — Backend Integration Guide
 
-This document is for the backend developer who will connect this frontend to the real API.
+This guide is for backend developers connecting the Voicera React app to a real API.
+
+**Also read:** [`OVERALL_DOCUMENTATION.md`](./OVERALL_DOCUMENTATION.md) (auth / tenancy overview).
+
+---
 
 ## Architecture Overview
 
 ```
-React Pages  →  lib/api.ts  →  (mock-api.ts in dev | Real Backend in prod)
+React Pages  →  lib/api.ts  →  mock-api.ts (dev)  |  REST backend (prod)
+Auth / org   →  AuthContext + Firebase Auth + Firestore (or demo seed)
+Admin ops    →  lib/adminApi.ts → Firebase Callable Functions
 ```
 
-All data fetching in the app flows through a- **To Integrate**: When the backend is ready, simply replace the `fetchExtractedData(agent)` function in `mock-api.ts` with a real `fetch('/api/extractions?agent=' + agent)` call. The UI will instantly populate with live production data without requiring any changes to the React components.
+**Design rule:** Pages import **only** `lib/api.ts` for product data. Never import `mock-api.ts` from UI code.
+
+When the backend is ready:
+
+1. Set `VITE_USE_MOCK=false` in `.env.local`
+2. Set `VITE_API_BASE_URL` to your API origin (no trailing slash)
+3. Implement the REST routes below; keep response shapes aligned with `src/app/lib/types.ts`
 
 ---
 
 ## Step 1 — Environment Setup
 
-Copy `.env.example` to `.env.local` and fill in:
+Copy `.env.example` → `.env.local`:
 
 ```env
 VITE_API_BASE_URL=https://your-backend.api.com
 VITE_WS_URL=wss://your-backend.api.com/ws
-VITE_USE_MOCK=false          # ← flip this to disable mock data
+VITE_USE_MOCK=false
+
+# Firebase (required for production auth — not the same as REST login)
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
 ```
 
-> [!CAUTION]
-> Never commit `.env.local` — it is in `.gitignore`.
+> Never commit `.env.local`. Production builds ignore `VITE_USE_MOCK=true`.
 
 ---
 
-## Step 2 — Authentication
+## Step 2 — Authentication (Important)
 
-The frontend uses **JWT Bearer tokens** stored in `localStorage`/`sessionStorage`.
+### Current frontend behavior
 
-**Current auth flow (mock):**
-1. User enters email + password on `/login`.
-2. `AuthContext` calls `loginUser()` from `api.ts`.
-3. A mock JWT is created locally and stored in storage.
+| Concern | Implementation |
+|---------|----------------|
+| Sign-in UI | `LoginScreen` → `AuthContext` |
+| Live auth | **Firebase Auth** (email/password, Google, TOTP MFA) |
+| Demo auth | Local session when Firebase env is missing (`tenantMemberships` seed) |
+| Token on API calls | Firebase **ID token** (or `demo-token`) via `getSession()` → `Authorization: Bearer …` |
 
-**To integrate real auth:**
+`api.ts` still exports `loginUser()` / `POST /auth/login` for historical completeness. **The login screen does not use this path for Firebase or demo auth.** Prefer verifying Firebase ID tokens on your API (or your own exchange), not a separate password login that duplicates Firebase.
 
-1. Implement `POST /auth/login` returning:
-   ```json
-   { "access_token": "<jwt>", "user": { "email": "...", "name": "...", "role": "admin" } }
-   ```
-2. In `api.ts` → `loginUser()`, replace the mock call with a real fetch.
-3. In `lib/auth.ts` → `login()`, update `createMockJwt` to store the real token returned from the backend.
+### Recommended backend auth
 
-The `apiFetch()` helper in `api.ts` already attaches `Authorization: Bearer <token>` to every subsequent request automatically.
+1. Accept `Authorization: Bearer <Firebase ID token>` on all protected routes.
+2. Verify the token with Firebase Admin SDK.
+3. Read custom claims (`role`, `orgId`) and enforce tenant isolation server-side.
+4. Optional: if you keep `POST /auth/login`, treat it as legacy; do not assume the SPA will call it after Firebase is configured.
+
+### Roles the frontend expects
+
+- `platform_admin` — `/admin` only
+- `customer_admin` — full tenant console (including configure / team / campaigns)
+- `customer_user` — limited tenant console
 
 ---
 
 ## Step 3 — Incremental Integration Order
 
-Integrate endpoints in this order, verifying each before moving to the next:
+Integrate and verify in this order:
 
 | Priority | Feature | Function in `api.ts` | Endpoint |
 |---|---|---|---|
-| 1 | **Authentication** | `loginUser` | `POST /auth/login` |
-| 2 | **Dashboard Metrics** | `getDashboardMetrics` | `GET /dashboard/metrics` |
-| 3 | **Extracted Data** | `getExtractedData` | `GET /dashboard/extractions` |
-| 4 | **Live Calls** | `getActiveCalls`, `endActiveCall` | `GET /calls/active`, `POST /calls/:id/end` |
-| 5 | **Completed Calls** | `getCompletedCalls` | `GET /calls/completed` |
-| 6 | **Transcripts / Analytics** | `getCallDetails`, `getAnalyticsMetrics` | `GET /analytics/calls`, `GET /analytics/metrics` |
-| 7 | **Knowledge Base** | `getKnowledgeFiles`, `uploadKnowledgeFile` | `GET /kb/files`, `POST /kb/files/upload` |
-| 8 | **Outbound Campaign** | `getCampaignCustomers`, `uploadCampaignCustomers` | `GET /outbound/customers`, `POST /outbound/customers/upload` |
-| 9 | **Settings** | `getSettings`, `saveSettings` | `GET /settings`, `PUT /settings` |
-| 10 | **System Health** | `getSystemHealth` | `GET /system/health` |
+| 1 | Token acceptance | `apiFetch` helper | All routes — Bearer Firebase ID token |
+| 2 | Dashboard metrics | `getDashboardMetrics` | `GET /dashboard/metrics?agent=` |
+| 3 | Extracted data | `getExtractedData` | `GET /dashboard/extractions?agent=` |
+| 4 | Domains | `getClientDomains` | `GET /dashboard/domains` |
+| 5 | Live calls | `getActiveCalls`, `endActiveCall` | `GET /calls/active`, `POST /calls/:id/end` |
+| 6 | Completed calls | `getCompletedCalls` | `GET /calls/completed` |
+| 7 | Analytics | `getCallDetails`, `getAnalyticsMetrics`, `toggleCallActionItem` | `GET /analytics/calls`, `GET /analytics/metrics`, `POST /analytics/calls/:id/action-items/:itemId/toggle` |
+| 8 | Knowledge base | `getKnowledgeFiles`, `uploadKnowledgeFile`, `deleteKnowledgeFile`, `reindexKnowledgeFile` | `GET/POST/DELETE /kb/files…` |
+| 9 | Data sources | `getDataSources` | (see `api.ts`) |
+| 10 | Outbound campaign | `getCampaignCustomers`, `uploadCampaignCustomers`, `getCampaignStatus`, `setCampaignStatus`, `getCampaignStatsData`, `getCampaignEta` | Campaign routes in `api.ts` |
+| 11 | Reminders | `getReminderContacts`, `addReminderContact`, `updateReminderStatus`, `bulkImportReminders` | Reminder routes in `api.ts` |
+| 12 | Settings | `getSettings`, `saveSettings` | `GET /settings`, `PUT /settings` |
+| 13 | System health | `getSystemHealth` | `GET /system/health` |
+
+Open `src/app/lib/api.ts` for exact paths, methods, and TypeScript return types.
 
 ---
 
-## Step 4
+## Step 4 — Domain-Agnostic Payloads
 
-### 1. Actionable Data Feed
-The primary module on the Dashboard is now "Recent Extracted Data". This feed takes up the full width of the screen space and displays:
-- **Entity Type**: Clearly badged as `Lead`, `Booking`, `Order`, or `Payment` with distinct colors and icons.
-- **Customer Info**: Name and contact details parsed from the call.
-- **Extraction Details**: The actual business value extracted. This uses the dynamic `attributes` JSON payload so that it cleanly renders any data regardless of domain.
-- **Status**: Whether the data is `Pending Review`, `Synced` (to a CRM/POS), or needs `Action Required`.
+### Extracted data feed
 
-### 2. Context-Aware Filtering
-The Dashboard is now directly wired to the **Agent Selector** in the top navigation bar. 
-- If you select "Restaurant Ordering", you only see Bookings and Orders. 
-- If you select "Loan Follow-up", the view switches to only show Payments and Leads.
-- The Dashboard title automatically updates to reflect the active agent context.
+Dashboard “extracted entities” use a flexible `attributes` object (`Record<string, string | number | …>`). The UI renders key/value badges without per-domain components.
 
-> [!IMPORTANT]
-> The `attributes` field is a **flexible key-value JSON object** — this is what powers the domain-agnostic dashboard. For a Restaurant booking, include `{"Guests": 4, "Time": "8:00 PM"}`. For a Payment, include `{"Amount Due": "$500", "DPD Bucket": "30-60 Days"}`. The frontend renders them automatically as badges without any code changes.
+Examples:
+
+- Restaurant booking: `{ "Guests": 4, "Time": "8:00 PM" }`
+- Loan payment: `{ "Amount Due": "500", "DPD Bucket": "30-60 Days" }`
+
+Filter by `agent` query param so restaurant vs loan (etc.) stay separated.
+
+### Agent scoping
+
+The SPA sends the active agent type from `AgentContext`. Backend should scope results by **org (tenant)** from the verified token **and** by agent when requested.
 
 ---
 
 ## Step 5 — Real-time Updates (WebSocket)
 
-The frontend currently polls every 5 seconds for:
-- Active calls (`/calls/active`)
-- Campaign progress (`/outbound/state`)
-- System health (`/system/health`)
+Today the UI **polls** (~5s) for:
 
-When the backend is ready, replace polling with WebSocket subscriptions using `VITE_WS_URL`. The WebSocket integration point is the `useEffect` polling hooks in `LiveCallsPage.tsx` and `DashboardLayout.tsx`.
+- Active calls (`/calls/active`)
+- Campaign / health-style updates (see `LiveCallsPage`, `DashboardLayout`)
+
+When ready, use `VITE_WS_URL` and replace polling hooks with subscriptions. Keep REST as fallback.
 
 ---
 
-## Summary of Files Modified
+## Step 6 — Firebase / Admin (Separate from REST)
+
+Platform admin mutations and audit often go through Cloud Functions (`src/app/lib/adminApi.ts`):
+
+- `recordAuditEvent`
+- `revokeMySessions`
+- `adminUpdateOrganization`
+- `offboardCustomer`
+
+Org `subscribedAgents` and `status` are also read from Firestore in `rbac.ts`. Coordinate Admin SDK rules with the frontend claims model.
+
+---
+
+## Multi-Tenant Checklist for Backend
+
+- [ ] Every customer query filtered by `orgId` from verified token
+- [ ] Platform admin routes rejected for customer tokens (and vice versa)
+- [ ] Suspended orgs return a clear status the SPA can map to `orgStatus: "suspended"`
+- [ ] Agent subscription list matches what the UI shows in AgentContext
+
+---
+
+## Summary of Frontend Touchpoints
 
 | File | Purpose |
-|---|---|
-| `src/app/lib/api.ts` | **NEW** — Single source of truth for all API calls |
-| `.env.example` | **NEW** — Documents all required environment variables |
-| `.env.local` | **NEW** — Your local config (git-ignored) |
-| `.gitignore` | **NEW** — Prevents committing secrets |
-| All `pages/*.tsx` | Updated to import from `api.ts` instead of `mock-api.ts` |
-| `layouts/DashboardLayout.tsx` | Updated to use `api.ts` |
-| `context/AuthContext.tsx` | Updated to use `api.ts` |
+|------|---------|
+| `src/app/lib/api.ts` | Single facade for REST / mock page data |
+| `src/app/lib/mock-api.ts` | Local fake data |
+| `src/app/lib/auth.ts` | Sync session cache for Bearer token |
+| `src/app/context/AuthContext.tsx` | Firebase / demo login |
+| `src/app/lib/firebase.ts` | Firebase init |
+| `src/app/lib/adminApi.ts` | Callable Functions |
+| `.env.example` | Env template |
+
+---
+
+## Quick Verify
+
+1. `VITE_USE_MOCK=true` (dev) → UI works offline with mock data.  
+2. `VITE_USE_MOCK=false` + live `VITE_API_BASE_URL` → network tab shows Bearer calls to your API.  
+3. Firebase configured → login creates real ID tokens; API must accept them.
