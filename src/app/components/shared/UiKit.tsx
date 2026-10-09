@@ -46,11 +46,11 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center py-14 px-6">
-      <div className="h-12 w-12 rounded-2xl bg-[#F7F4EF] border border-[#E2DDD5] flex items-center justify-center mb-3">
+    <div className="vo-page flex flex-col items-center justify-center text-center py-14 px-6">
+      <div className="h-12 w-12 rounded-2xl bg-[#F7F4EF] border border-[#E2DDD5] flex items-center justify-center mb-3 transition-transform duration-200 hover:scale-105">
         <Icon size={22} className="text-[#9E9890]" aria-hidden />
       </div>
-      <p className="m-0 text-[14px] font-semibold text-[#1E1A14]">{title}</p>
+      <p className="m-0 text-[14px] font-semibold text-[#1E1A14] vo-text-glow">{title}</p>
       {description && (
         <p className="m-0 mt-1 max-w-sm text-[13px] text-[#7A746C] leading-relaxed">{description}</p>
       )}

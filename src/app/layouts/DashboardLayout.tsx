@@ -3,16 +3,20 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from "react-router";
 import {
   Bot, LayoutDashboard, Library, Phone, BarChart3, Rocket,
   Megaphone, Users, Menu, X, LogOut, HelpCircle, Building2, CreditCard,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useAgent } from "../context/AgentContext";
 import { AgentSwitcher } from "../components/AgentSwitcher";
 import { NotificationBell } from "../components/NotificationBell";
+import { HeaderProfile } from "../components/HeaderProfile";
 import { CORE_SETUP_NAV, OPERATIONS_NAV, TENANT_ADMIN_NAV } from "../lib/workflow";
 import { getSystemHealth, getFriendlyApiMessage } from "../lib/api";
 import type { AgentType, SystemHealth } from "../lib/types";
 import { ConfirmDialog } from "../components/shared/UiKit";
 import heuristicLabsLogoLight from "../../assets/heuristic-labs-logo-light.png";
+
+const SIDEBAR_COLLAPSE_KEY = "voicera_sidebar_collapsed";
 
 const ICON_BY_ID: Record<string, typeof Phone> = {
   dashboard: LayoutDashboard,
@@ -26,29 +30,33 @@ const ICON_BY_ID: Record<string, typeof Phone> = {
   usage: CreditCard,
 };
 
-function NavItem({ icon: Icon, label, path, end, onNavigate }: {
-  icon: typeof Phone; label: string; path: string; end?: boolean; onNavigate?: () => void;
+function NavItem({ icon: Icon, label, path, end, onNavigate, collapsed }: {
+  icon: typeof Phone; label: string; path: string; end?: boolean; onNavigate?: () => void; collapsed?: boolean;
 }) {
   return (
     <NavLink
       to={path}
       end={end}
       onClick={onNavigate}
+      title={collapsed ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center gap-2.5 min-h-10 h-10 px-[18px] border-l-[3px] text-[13px] no-underline w-full transition-[background-color,color,border-color] duration-200 ${
+        `vo-nav-link flex items-center ${collapsed ? "justify-center px-0" : "gap-2.5 px-[18px]"} min-h-10 h-10 border-l-[3px] text-[13px] no-underline w-full ${
           isActive
             ? "border-l-white/90 bg-white/15 text-white font-semibold"
             : "border-l-transparent text-white/65 font-normal hover:bg-white/10 hover:text-white/90"
         }`
       }
     >
-      <Icon size={15} />
-      {label}
+      <Icon size={15} className="shrink-0" />
+      {!collapsed && label}
     </NavLink>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, collapsed }: { children: React.ReactNode; collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="mx-3 my-2 border-t border-white/10" aria-hidden />;
+  }
   return (
     <div className="px-5 pt-3 pb-1.5">
       <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
@@ -56,6 +64,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
       </span>
     </div>
   );
+}
+
+function pageTitle(pathname: string): string {
+  const all = [...CORE_SETUP_NAV, ...OPERATIONS_NAV, ...TENANT_ADMIN_NAV];
+  const hit = all.find((n) => n.path === pathname);
+  return hit?.label ?? "Workspace";
 }
 
 // ── Layout ─────────────────────────────────────────────────────────────────────
@@ -69,6 +83,13 @@ export function DashboardLayout() {
   const [healthReachable, setHealthReachable] = useState(true);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [tenantPicker, setTenantPicker] = useState(false);
   const [tenantName, setTenantName] = useState(
@@ -80,6 +101,18 @@ export function DashboardLayout() {
     !!session &&
     session.user.role !== "platform_admin" &&
     userTenants.length === 0;
+
+  const toggleCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const pickTenant = useCallback((id: string, name: string, primaryAgent: AgentType) => {
     sessionStorage.removeItem("vocera_selected_agent");
@@ -173,7 +206,6 @@ export function DashboardLayout() {
     };
   }, []);
 
-  // Close sidebar on Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") {
       setSidebarOpen(false);
@@ -192,11 +224,12 @@ export function DashboardLayout() {
   };
 
   const closeSidebar = () => setSidebarOpen(false);
+  // On mobile drawer, never use collapsed icon-only mode
+  const collapsed = sidebarCollapsed;
 
   const sidebar = (
     <>
-      {/* Logo — click returns to workspace home */}
-      <div className="flex items-center gap-3 px-5 pt-6 pb-5">
+      <div className={`flex items-center gap-2 ${collapsed ? "justify-center px-2" : "px-5"} pt-5 pb-4`}>
         <Link
           to="/dashboard"
           onClick={(e) => {
@@ -206,17 +239,20 @@ export function DashboardLayout() {
               document.getElementById("main-content")?.scrollTo({ top: 0, behavior: "smooth" });
             }
           }}
-          className="flex min-w-0 items-center gap-3 rounded-lg no-underline -ml-1 px-1 py-0.5 hover:bg-white/10 transition-colors"
+          className="flex min-w-0 items-center gap-3 rounded-lg no-underline px-1 py-0.5 hover:bg-white/10 transition-colors"
           aria-label="Voicera home"
+          title="Voicera home"
         >
           <img
             src={heuristicLabsLogoLight}
             alt=""
             className="h-[38px] w-[38px] object-contain shrink-0"
           />
-          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
-            Voicera
-          </span>
+          {!collapsed && (
+            <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+              Voicera
+            </span>
+          )}
         </Link>
         <button
           type="button"
@@ -228,7 +264,7 @@ export function DashboardLayout() {
         </button>
       </div>
 
-      <SectionLabel>Setup</SectionLabel>
+      <SectionLabel collapsed={collapsed}>Setup</SectionLabel>
       <nav className="flex flex-col gap-0.5">
         {filterAdmin(CORE_SETUP_NAV).map((item) => (
           <NavItem
@@ -238,11 +274,12 @@ export function DashboardLayout() {
             path={item.path}
             end={item.path === "/dashboard"}
             onNavigate={closeSidebar}
+            collapsed={collapsed}
           />
         ))}
       </nav>
 
-      <SectionLabel>Operations</SectionLabel>
+      <SectionLabel collapsed={collapsed}>Operations</SectionLabel>
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {filterAdmin(OPERATIONS_NAV).map((item) => (
           <NavItem
@@ -251,10 +288,11 @@ export function DashboardLayout() {
             label={item.label}
             path={item.path}
             onNavigate={closeSidebar}
+            collapsed={collapsed}
           />
         ))}
 
-        <SectionLabel>Admin</SectionLabel>
+        <SectionLabel collapsed={collapsed}>Admin</SectionLabel>
         {filterAdmin(TENANT_ADMIN_NAV).map((item) => (
           <NavItem
             key={item.path}
@@ -262,62 +300,87 @@ export function DashboardLayout() {
             label={item.label}
             path={item.path}
             onNavigate={closeSidebar}
+            collapsed={collapsed}
           />
         ))}
       </nav>
 
-      {/* Footer */}
       <div className="border-t border-white/10 pt-2">
         <button
           type="button"
-          className="flex h-10 w-full items-center gap-2 border-none bg-transparent px-[18px] text-white/50 cursor-pointer text-[12px] hover:text-white/80 hover:bg-white/5 transition-colors"
+          className={`flex h-10 w-full items-center ${collapsed ? "justify-center px-0" : "gap-2 px-[18px]"} border-none bg-transparent text-white/50 cursor-pointer text-[12px] hover:text-white/80 hover:bg-white/5 transition-colors`}
           aria-label="Help and support"
           title="Help & Support"
         >
           <HelpCircle size={14} />
-          Help & Support
+          {!collapsed && "Help & Support"}
         </button>
 
-        {/* User info row */}
-        <div className="flex h-14 w-full items-center gap-2.5 px-[18px] mb-1">
-          <div className="h-7 w-7 shrink-0 rounded-full bg-white/20 flex items-center justify-center">
-            <span className="text-[11px] font-bold text-white uppercase">
-              {session?.user.name?.[0] ?? "A"}
-            </span>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col items-start">
-            <span className="text-[12px] font-semibold text-white/90 truncate max-w-[110px]">
-              {session?.user.name ?? "Admin User"}
-            </span>
-            <span className="max-w-[110px] truncate text-[10px] text-white/45">
-              {session?.user.email ?? ""}
-            </span>
-            {/* Role badge */}
-            <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/15 text-white/70">
-              {session?.user.role === "customer_admin" ? "Customer Admin" :
-               session?.user.role === "customer_user"  ? "Customer User"  :
-               "Workspace"}
-            </span>
-          </div>
+        {/* Desktop collapse control */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className={`hidden lg:flex h-10 w-full items-center ${collapsed ? "justify-center px-0" : "gap-2 px-[18px]"} border-none bg-transparent text-white/50 cursor-pointer text-[12px] hover:text-white/80 hover:bg-white/5 transition-colors`}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+          {!collapsed && "Collapse"}
+        </button>
+
+        {!collapsed && (
+          <>
+            <div className="flex h-14 w-full items-center gap-2.5 px-[18px] mb-1">
+              <div className="h-7 w-7 shrink-0 rounded-full bg-white/20 flex items-center justify-center">
+                <span className="text-[11px] font-bold text-white uppercase">
+                  {session?.user.name?.[0] ?? "A"}
+                </span>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col items-start">
+                <span className="text-[12px] font-semibold text-white/90 truncate max-w-[110px]">
+                  {session?.user.name ?? "Admin User"}
+                </span>
+                <span className="max-w-[110px] truncate text-[10px] text-white/45">
+                  {session?.user.email ?? ""}
+                </span>
+                <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/15 text-white/70">
+                  {session?.user.role === "customer_admin" ? "Customer Admin" :
+                   session?.user.role === "customer_user"  ? "Customer User"  :
+                   "Workspace"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLogoutConfirm(true)}
+                title="Sign out"
+                aria-label="Sign out"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border-none"
+              >
+                <LogOut size={13} color="rgba(255,255,255,0.65)" />
+              </button>
+            </div>
+
+            {session?.user.orgId && (
+              <div className="flex items-center gap-1.5 px-[18px] pb-2">
+                <Building2 size={10} className="text-white/30 shrink-0" />
+                <span className="text-[10px] text-white/30 truncate font-mono">
+                  {tenantName || sessionStorage.getItem("voicera_active_tenant_name") || session.user.orgId}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
+        {collapsed && (
           <button
             type="button"
             onClick={() => setLogoutConfirm(true)}
             title="Sign out"
             aria-label="Sign out"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border-none"
+            className="flex h-10 w-full items-center justify-center border-none bg-transparent text-white/50 cursor-pointer hover:text-white/80 hover:bg-white/5 mb-2"
           >
-            <LogOut size={13} color="rgba(255,255,255,0.65)" />
+            <LogOut size={15} />
           </button>
-        </div>
-
-        {/* Org identifier */}
-        {session?.user.orgId && (
-          <div className="flex items-center gap-1.5 px-[18px] pb-2">
-            <Building2 size={10} className="text-white/30 shrink-0" />
-            <span className="text-[10px] text-white/30 truncate font-mono">
-              {tenantName || sessionStorage.getItem("voicera_active_tenant_name") || session.user.orgId}
-            </span>
-          </div>
         )}
       </div>
     </>
@@ -326,7 +389,6 @@ export function DashboardLayout() {
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-[#F7F4EF] font-[Inter,sans-serif]">
       <a href="#main-content" className="vo-skip">Skip to content</a>
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
           className="vo-overlay fixed inset-0 z-40 lg:hidden"
@@ -335,9 +397,29 @@ export function DashboardLayout() {
         />
       )}
 
+      {/* Mobile drawer — always full width labels */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 ease-out lg:static lg:z-auto lg:min-w-[210px] lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[220px] flex-col transition-transform duration-200 ease-out lg:hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ backgroundColor: "#50381F" }}
+        aria-label="Workspace navigation"
+      >
+        {/* Force expanded labels on mobile by temporarily rendering with collapsed=false */}
+        <DashboardMobileSidebar
+          session={session}
+          tenantName={tenantName}
+          pathname={pathname}
+          filterAdmin={filterAdmin}
+          closeSidebar={closeSidebar}
+          setLogoutConfirm={setLogoutConfirm}
+        />
+      </aside>
+
+      {/* Desktop sidebar — collapsible */}
+      <aside
+        className={`hidden lg:flex h-full flex-col shrink-0 transition-[width] duration-200 ease-out ${
+          collapsed ? "w-[72px]" : "w-[220px]"
         }`}
         style={{ backgroundColor: "#50381F" }}
         aria-label="Workspace navigation"
@@ -347,7 +429,7 @@ export function DashboardLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="relative z-40 shrink-0 border-b border-[#E2DDD5] bg-white/95 backdrop-blur-sm px-4 h-14 sm:px-6">
-          <div className="flex items-center justify-between w-full h-14">
+          <div className="flex items-center justify-between w-full h-14 gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 type="button"
@@ -357,6 +439,24 @@ export function DashboardLayout() {
               >
                 <Menu size={18} />
               </button>
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className="vo-icon-btn hidden lg:inline-flex"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              </button>
+              <div className="hidden md:flex flex-col min-w-0 leading-tight">
+                <span className="text-[11px] font-medium text-[#9E9890] truncate">
+                  {tenantName || "Workspace"}
+                </span>
+                <span className="text-[13px] font-semibold text-[#1E1A14] truncate">
+                  {pageTitle(pathname)}
+                </span>
+              </div>
+              <div className="h-5 w-px bg-[#E2DDD5] hidden sm:block shrink-0" />
               <div className="flex min-w-0 items-center gap-2">
                 <span className="hidden sm:inline text-[12px] font-medium text-[#9E9890] shrink-0">Active agent:</span>
                 <span className="sm:hidden text-[11px] font-medium text-[#9E9890] shrink-0">Agent:</span>
@@ -366,7 +466,7 @@ export function DashboardLayout() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-5">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <div
                 className="flex items-center gap-1.5"
                 title={
@@ -388,7 +488,7 @@ export function DashboardLayout() {
                         : "bg-[#F59E0B]"
                   }`}
                 />
-                <span className="text-[12px] font-medium text-[#7A746C] hidden sm:inline">
+                <span className="text-[12px] font-medium text-[#7A746C] hidden lg:inline">
                   {!healthReachable || health.status === "down"
                     ? "Service Unavailable"
                     : health.status === "healthy"
@@ -396,12 +496,15 @@ export function DashboardLayout() {
                       : "Degraded"}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-semibold text-[#50381F] bg-[#EDE4D8] px-2.5 py-0.5 rounded-full">
-                  {health.activeCalls} Active
-                </span>
-              </div>
+              <span className={`text-[12px] font-semibold text-[#50381F] bg-[#EDE4D8] px-2.5 py-0.5 rounded-full hidden sm:inline ${health.activeCalls > 0 ? "vo-chip-live" : ""}`}>
+                {health.activeCalls} Active
+              </span>
               <NotificationBell variant="customer" />
+              <HeaderProfile
+                tenantName={tenantName}
+                variant="customer"
+                onSignOut={() => setLogoutConfirm(true)}
+              />
             </div>
           </div>
         </header>
@@ -444,7 +547,6 @@ export function DashboardLayout() {
         </main>
       </div>
 
-      {/* Post-login multi-tenant switcher — only when user belongs to 2+ orgs */}
       {tenantPicker && userTenants.length > 1 && (
         <div className="vo-overlay fixed inset-0 z-[210] flex items-center justify-center">
           <div className="vo-dialog w-[440px] max-w-[92vw] p-6" role="dialog" aria-modal="true" aria-labelledby="tenant-picker-title">
@@ -488,5 +590,126 @@ export function DashboardLayout() {
         />
       )}
     </div>
+  );
+}
+
+/** Mobile drawer always shows full labels (ignores desktop collapse). */
+function DashboardMobileSidebar({
+  session,
+  tenantName,
+  pathname,
+  filterAdmin,
+  closeSidebar,
+  setLogoutConfirm,
+}: {
+  session: ReturnType<typeof useAuth>["session"];
+  tenantName: string;
+  pathname: string;
+  filterAdmin: <T extends { adminOnly?: boolean }>(items: readonly T[]) => T[];
+  closeSidebar: () => void;
+  setLogoutConfirm: (v: boolean) => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-3 px-5 pt-6 pb-5">
+        <Link
+          to="/dashboard"
+          onClick={(e) => {
+            closeSidebar();
+            if (pathname === "/dashboard") {
+              e.preventDefault();
+              document.getElementById("main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="flex min-w-0 items-center gap-3 rounded-lg no-underline -ml-1 px-1 py-0.5 hover:bg-white/10 transition-colors"
+          aria-label="Voicera home"
+        >
+          <img src={heuristicLabsLogoLight} alt="" className="h-[38px] w-[38px] object-contain shrink-0" />
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+            Voicera
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={closeSidebar}
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 cursor-pointer border-none"
+          aria-label="Close menu"
+        >
+          <X size={16} color="white" />
+        </button>
+      </div>
+
+      <SectionLabel>Setup</SectionLabel>
+      <nav className="flex flex-col gap-0.5">
+        {filterAdmin(CORE_SETUP_NAV).map((item) => (
+          <NavItem
+            key={item.path}
+            icon={ICON_BY_ID[item.id] ?? LayoutDashboard}
+            label={item.label}
+            path={item.path}
+            end={item.path === "/dashboard"}
+            onNavigate={closeSidebar}
+          />
+        ))}
+      </nav>
+
+      <SectionLabel>Operations</SectionLabel>
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+        {filterAdmin(OPERATIONS_NAV).map((item) => (
+          <NavItem
+            key={item.path}
+            icon={ICON_BY_ID[item.id] ?? Phone}
+            label={item.label}
+            path={item.path}
+            onNavigate={closeSidebar}
+          />
+        ))}
+        <SectionLabel>Admin</SectionLabel>
+        {filterAdmin(TENANT_ADMIN_NAV).map((item) => (
+          <NavItem
+            key={item.path}
+            icon={ICON_BY_ID[item.id] ?? Users}
+            label={item.label}
+            path={item.path}
+            onNavigate={closeSidebar}
+          />
+        ))}
+      </nav>
+
+      <div className="border-t border-white/10 pt-2">
+        <div className="flex h-14 w-full items-center gap-2.5 px-[18px] mb-1">
+          <div className="h-7 w-7 shrink-0 rounded-full bg-white/20 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-white uppercase">
+              {session?.user.name?.[0] ?? "A"}
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col items-start">
+            <span className="text-[12px] font-semibold text-white/90 truncate max-w-[110px]">
+              {session?.user.name ?? "Admin User"}
+            </span>
+            <span className="max-w-[110px] truncate text-[10px] text-white/45">
+              {session?.user.email ?? ""}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLogoutConfirm(true)}
+            title="Sign out"
+            aria-label="Sign out"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border-none"
+          >
+            <LogOut size={13} color="rgba(255,255,255,0.65)" />
+          </button>
+        </div>
+        {session?.user.orgId && (
+          <div className="flex items-center gap-1.5 px-[18px] pb-2">
+            <Building2 size={10} className="text-white/30 shrink-0" />
+            <span className="text-[10px] text-white/30 truncate font-mono">
+              {tenantName || session.user.orgId}
+            </span>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

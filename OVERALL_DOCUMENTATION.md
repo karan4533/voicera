@@ -186,16 +186,82 @@ Production builds ignore `VITE_USE_MOCK=true`.
 
 ---
 
-## 11. Non-Technical Summary
+## 11. UX Experience (what the user feels)
 
-You sign in. The app knows if you are a Voicera platform manager or a customer. Managers use the admin console. Customers open their company workspace (automatically or by picking one), choose which AI phone agent to manage, then use dashboards for calls, campaigns, and team. Each company only sees its own data. The product can run with sample demo data or connected to real cloud login and APIs.
+Architecture alone is not the product. This section documents **frontend UX behavior** that already exists in code.
+
+### 11.1 Primary user journeys
+
+| Journey | UX path |
+|---------|---------|
+| First login | Branded `/login` → role redirect → admin console **or** customer dashboard |
+| Restaurant manager | Auto-enter tenant (or picker) → choose agent → Setup → Ops → Team |
+| Restaurant staff (`customer_user`) | Same dashboard, but Configure / Campaigns / Team hidden or blocked |
+| Platform admin | `/admin` only — no tenant picker, no customer call data |
+| Suspended org | Full-page `SuspendedAccountScreen` (not a silent empty dashboard) |
+| Multi-company user | Modal workspace picker before any agent work |
+
+### 11.2 Feedback states (production UX)
+
+| State | What the user sees | Where |
+|-------|--------------------|--------|
+| **Loading** | Spinners / skeletons (auth gate, KPI rows, lists) | `RoleRoute`, `MetricSkeleton`, pages |
+| **Empty** | Clear empty copy + optional action | `EmptyState` in `UiKit` |
+| **Error + Retry** | Red panel, message, Retry button | `LoadErrorPanel` on Dashboard, Analytics, Knowledge, Campaigns |
+| **Mutation fail** | Toast (Sonner) | Upload/delete/campaign/toggle actions |
+| **Offline** | Fixed top red banner | `OfflineBanner` |
+| **Backend down / degraded** | Header “Service Unavailable” / “Degraded” + strip banner | `DashboardLayout` health poll |
+| **Page crash** | “Something went wrong” + Try again | `ErrorBoundary` |
+| **Session expired (401)** | Logged out → `/login` | `api.ts` + `ApiUnauthorizedBridge` |
+
+### 11.3 Navigation & orientation UX
+
+- **Sidebar workflow** (`workflow.ts`): Setup → Operations → Team/Usage — matches PRD order.
+- **Active agent** always visible in header (`AgentSwitcher`) so data feels scoped.
+- **Health + active-call chip** in header for operational awareness.
+- **Notifications bell** for account/agent events (admin vs customer links differ).
+- **Legacy URL redirects** avoid broken bookmarks (`customize` → `configure`, etc.).
+
+### 11.4 Visual / interaction language
+
+- Brand palette: warm paper background (`#F7F4EF`), accent brown (`#50381F`).
+- Shared chrome: `vo-card`, `vo-btn`, `vo-input` in `styles/index.css` + `PageHeader` / `UiKit`.
+- Responsive shells: mobile sidebar toggle in `DashboardLayout` / `AdminLayout`.
+- Confirm dialogs for destructive actions (logout, delete).
+
+### 11.5 UX gaps / known limits
+
+| Gap | Notes |
+|-----|--------|
+| Live Calls still partly demo-simulated | Can look “live” even when API is down — weaker outage honesty |
+| `customer_user` permissions | Route-blocked; deeper capability grants still scaffolded |
+| Accessibility | Focus styles exist; no full a11y audit documented |
+| i18n | UI copy is English-first |
+| Onboarding tour | No first-run product tour beyond tenant picker |
+
+### 11.6 UX checklist for QA
+
+1. Login errors are human-readable (not raw Firebase codes).  
+2. Wrong role never lands on the wrong console.  
+3. Multi-tenant user must pick a workspace before seeing agents.  
+4. Kill backend / go offline → banner + Retry, **not** endless skeleton.  
+5. Admin-only nav items hidden for `customer_user`.  
+6. Suspended tenant cannot use the dashboard.  
+7. Mobile: open/close sidebar; pages remain usable.
 
 ---
 
-## 12. Related Code Entry Points
+## 12. Non-Technical Summary
+
+You sign in. The app knows if you are a Voicera platform manager or a customer. Managers use the admin console. Customers open their company workspace (automatically or by picking one), choose which AI phone agent to manage, then use dashboards for calls, campaigns, and team. Each company only sees its own data. When something fails (offline, API down, crash), the UI should explain it and offer a way back — not hang forever. The product can run with sample demo data or connected to real cloud login and APIs.
+
+---
+
+## 13. Related Code Entry Points
 
 - Routes & providers: `src/app/App.tsx`
 - Auth: `src/app/context/AuthContext.tsx`
 - Agents: `src/app/context/AgentContext.tsx`
 - API switch: `src/app/lib/api.ts`
+- UX resilience: `ErrorBoundary`, `OfflineBanner`, `LoadErrorPanel`, health banner in `DashboardLayout`
 - Env template: `.env.example`
